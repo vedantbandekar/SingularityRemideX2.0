@@ -1,13 +1,16 @@
 """
-Remidex - Home Page
-Landing page with title, quote, and navigation cards
+Remidex - Smart Medication Management System
+Main application entry point - Home Page
 """
 
 import streamlit as st
 import sys
 import os
+from datetime import date, timedelta
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+# Add utils to path
+sys.path.insert(0, os.path.dirname(__file__))
+
 from utils.database import Database
 from utils.ai_helper import get_medicine_search
 
@@ -248,7 +251,6 @@ with stats_col3:
 
 with stats_col4:
     # Count low stock items
-    from datetime import date, timedelta
     low_stock = 0
     for supply in supplies:
         if supply['daily_dosage'] > 0:

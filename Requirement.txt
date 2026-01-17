@@ -1,0 +1,5 @@
+streamlit
+sqllite
+scikit-learn
+pandas
+

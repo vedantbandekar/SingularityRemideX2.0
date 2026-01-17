@@ -5,7 +5,7 @@ Handles all SQLite CRUD operations for medicines, alerts, supplies, and history
 
 import sqlite3
 import os
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import List, Dict, Optional, Tuple
 
 # Database path

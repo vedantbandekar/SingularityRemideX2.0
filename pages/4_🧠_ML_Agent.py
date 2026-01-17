@@ -11,6 +11,7 @@ import json
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from utils.database import Database
 from utils.ai_helper import get_medicine_search
+from utils.styling import inject_css, render_sidebar_header, render_footer
 
 # Page configuration
 st.set_page_config(
@@ -19,118 +20,141 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS
+# Inject premium CSS
+inject_css(st)
+
+# Additional page-specific CSS
 st.markdown("""
 <style>
-    :root {
-        --lime-green: #32CD32;
-        --black: #000000;
-        --white: #FFFFFF;
-        --dark-gray: #1a1a1a;
-    }
-    
-    [data-testid="stSidebar"] {
-        background-color: var(--dark-gray);
-        border-right: 2px solid var(--lime-green);
-    }
-    
-    h1, h2, h3, h4 { color: var(--lime-green) !important; }
-    
     .search-container {
-        background: linear-gradient(145deg, var(--dark-gray), #0d0d0d);
-        border: 2px solid var(--lime-green);
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
         border-radius: 20px;
         padding: 2rem;
         margin: 1rem 0;
     }
     
     .result-card {
-        background: var(--dark-gray);
-        border: 1px solid var(--lime-green);
-        border-radius: 15px;
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
         padding: 1.5rem;
         margin: 1rem 0;
+        transition: all 0.3s ease;
+    }
+    
+    .result-card:hover {
+        border-color: var(--primary-light);
+        box-shadow: 0 10px 30px rgba(99, 102, 241, 0.15);
     }
     
     .medicine-title {
-        color: var(--lime-green);
-        font-size: 1.5rem;
+        font-size: 1.4rem;
         font-weight: 700;
-        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, var(--primary-light), var(--accent));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0.75rem;
     }
     
     .info-section {
-        background: rgba(50, 205, 50, 0.1);
-        border-radius: 10px;
-        padding: 1rem;
-        margin: 0.5rem 0;
-        border-left: 4px solid var(--lime-green);
+        background: rgba(99, 102, 241, 0.1);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin: 0.75rem 0;
+        border-left: 4px solid var(--primary);
     }
     
     .info-title {
-        color: var(--lime-green);
+        color: var(--primary-light);
         font-weight: 600;
-        font-size: 1.1rem;
+        font-size: 1rem;
         margin-bottom: 0.5rem;
     }
     
     .info-content {
-        color: rgba(255,255,255,0.9);
-        line-height: 1.6;
+        color: var(--text-secondary);
+        line-height: 1.7;
+        font-size: 0.95rem;
     }
     
-    .side-effects-list {
-        color: #ffcc00;
+    .side-effects-section {
+        background: rgba(245, 158, 11, 0.1);
+        border-left-color: var(--warning);
     }
     
-    .interaction-warning {
-        background: rgba(255, 107, 107, 0.2);
-        border-left-color: #ff6b6b;
+    .side-effects-section .info-title {
+        color: var(--warning);
     }
     
-    .interaction-title {
-        color: #ff6b6b;
+    .interaction-section {
+        background: rgba(239, 68, 68, 0.1);
+        border-left-color: var(--danger);
+    }
+    
+    .interaction-section .info-title {
+        color: #F87171;
     }
     
     .match-score {
-        background: var(--lime-green);
-        color: var(--black);
-        padding: 0.2rem 0.6rem;
-        border-radius: 10px;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        color: var(--text-primary);
+        padding: 0.3rem 0.8rem;
+        border-radius: 20px;
         font-size: 0.8rem;
         font-weight: 600;
+        box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3);
     }
     
-    .stButton > button {
-        background: linear-gradient(145deg, var(--lime-green), #28a428);
-        color: var(--black) !important;
-        font-weight: 600;
-        border: none;
-        border-radius: 10px;
+    .quick-btn {
+        background: var(--glass-bg) !important;
+        border: 1px solid var(--glass-border) !important;
+        color: var(--text-primary) !important;
+        transition: all 0.3s ease !important;
+    }
+    
+    .quick-btn:hover {
+        border-color: var(--primary) !important;
+        background: var(--bg-elevated) !important;
     }
     
     .chat-message-user {
-        background: var(--lime-green);
-        color: var(--black);
-        padding: 1rem;
-        border-radius: 15px 15px 5px 15px;
-        margin: 0.5rem 0;
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: var(--text-primary);
+        padding: 1rem 1.25rem;
+        border-radius: 16px 16px 4px 16px;
+        margin: 0.75rem 0;
+        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
     }
     
     .chat-message-ai {
-        background: var(--dark-gray);
-        border: 1px solid var(--lime-green);
-        padding: 1rem;
-        border-radius: 15px 15px 15px 5px;
-        margin: 0.5rem 0;
-        color: var(--white);
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        padding: 1rem 1.25rem;
+        border-radius: 16px 16px 16px 4px;
+        margin: 0.75rem 0;
+        color: var(--text-primary);
     }
     
-    .quick-query-btn {
-        background: transparent !important;
-        border: 1px solid var(--lime-green) !important;
-        color: var(--lime-green) !important;
-        margin: 0.2rem;
+    .section-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, var(--primary-light), var(--accent));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 1rem;
+    }
+    
+    .about-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
+        padding: 1.5rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -148,9 +172,7 @@ if 'kb_chat_history' not in st.session_state:
     st.session_state.kb_chat_history = []
 
 # Sidebar
-st.sidebar.markdown("# 💊 Remidex")
-st.sidebar.markdown("*Your Smart Medication Manager*")
-st.sidebar.markdown("---")
+render_sidebar_header(st)
 
 st.sidebar.markdown("### 🤖 AI Assistant")
 for msg in st.session_state.chat_history[-3:]:
@@ -167,15 +189,15 @@ if user_query:
     st.rerun()
 
 # Main content
-st.markdown("# 🧠 Knowledge Hub")
-st.markdown("*Your AI-powered medicine information center*")
+st.markdown('<h1 class="page-header">🧠 Knowledge Hub</h1>', unsafe_allow_html=True)
+st.markdown('<p class="page-subtitle">Your AI-powered medicine information center</p>', unsafe_allow_html=True)
 st.markdown("---")
 
 # Search tabs
 tab1, tab2 = st.tabs(["🔍 Medicine Search", "💬 Ask AI"])
 
 with tab1:
-    st.markdown("### Search Medicine Database")
+    st.markdown('<p class="section-title">Search Medicine Database</p>', unsafe_allow_html=True)
     st.markdown("*Search from over 7,000 medicines to find detailed information*")
     
     # Search input
@@ -252,10 +274,10 @@ with tab1:
                         effects_list = side_effects.split(',')
                         effects_html = "".join([f"<li>{e.strip()}</li>" for e in effects_list[:10]])
                         st.markdown(f"""
-                        <div class="info-section" style="border-left-color: #ffcc00; background: rgba(255, 204, 0, 0.1);">
-                            <div class="info-title" style="color: #ffcc00;">⚠️ Side Effects</div>
+                        <div class="info-section side-effects-section">
+                            <div class="info-title">⚠️ Side Effects</div>
                             <div class="info-content">
-                                <ul class="side-effects-list" style="margin: 0; padding-left: 1.5rem;">
+                                <ul style="margin: 0; padding-left: 1.5rem; color: var(--warning);">
                                     {effects_html}
                                 </ul>
                             </div>
@@ -265,14 +287,14 @@ with tab1:
                     # Drug Interactions
                     interactions = med['drug_interactions']
                     if interactions.get('drug') and len(interactions['drug']) > 0:
-                        st.markdown(f"""
-                        <div class="info-section interaction-warning">
-                            <div class="info-title interaction-title">🔗 Drug Interactions</div>
+                        st.markdown("""
+                        <div class="info-section interaction-section">
+                            <div class="info-title">🔗 Drug Interactions</div>
                         </div>
                         """, unsafe_allow_html=True)
                         
                         for i, (drug, effect) in enumerate(zip(interactions['drug'][:5], interactions['effect'][:5])):
-                            effect_color = "#ff4444" if "LIFE-THREATENING" in effect else "#ffcc00" if "SERIOUS" in effect else "#32CD32"
+                            effect_color = "#EF4444" if "LIFE-THREATENING" in effect else "#F59E0B" if "SERIOUS" in effect else "#10B981"
                             st.markdown(f"- **{drug}**: <span style='color: {effect_color};'>{effect}</span>", unsafe_allow_html=True)
                     
                     st.markdown("---")
@@ -280,7 +302,7 @@ with tab1:
             st.warning(f"No results found for '{search_query}'. Try a different search term.")
 
 with tab2:
-    st.markdown("### 💬 Ask the AI Assistant")
+    st.markdown('<p class="section-title">💬 Ask the AI Assistant</p>', unsafe_allow_html=True)
     st.markdown("*Ask natural language questions about medicines*")
     
     # Example questions
@@ -355,15 +377,27 @@ with tab2:
             st.rerun()
 
 # Info section
+# Info section
 st.markdown("---")
-st.markdown("### ℹ️ About the Knowledge Hub")
-st.info("""
-**Data Source:** This knowledge hub contains information on over 7,000 medicines from a comprehensive medical database.
+st.markdown('<p class="section-title">ℹ️ About the Knowledge Hub</p>', unsafe_allow_html=True)
 
-**Features:**
-- 🔍 **Fuzzy Search:** Find medicines even with partial or misspelled names
-- 📋 **Detailed Information:** Composition, description, side effects, and drug interactions
-- 💬 **Natural Language:** Ask questions in plain English
+st.markdown("""
+<div class="about-card">
+    <p style="color: var(--text-primary); font-weight: 600; margin-bottom: 1rem;">📊 Data Source</p>
+    <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+        This knowledge hub contains information on over 7,000 medicines from a comprehensive medical database.
+    </p>
+    <p style="color: var(--text-primary); font-weight: 600; margin-bottom: 0.75rem;">✨ Features</p>
+    <ul style="color: var(--text-secondary); margin-bottom: 1.5rem; padding-left: 1.5rem;">
+        <li><strong style="color: var(--primary);">Fuzzy Search:</strong> Find medicines even with partial or misspelled names</li>
+        <li><strong style="color: var(--primary);">Detailed Information:</strong> Composition, description, side effects, and drug interactions</li>
+        <li><strong style="color: var(--primary);">Natural Language:</strong> Ask questions in plain English</li>
+    </ul>
+    <p style="color: var(--warning); font-size: 0.9rem;">
+        ⚠️ <strong>Disclaimer:</strong> This information is for educational purposes only. Always consult a healthcare professional before making medical decisions.
+    </p>
+</div>
+""", unsafe_allow_html=True)
 
-**⚠️ Disclaimer:** This information is for educational purposes only. Always consult a healthcare professional before making medical decisions.
-""")
+# Footer
+render_footer(st)

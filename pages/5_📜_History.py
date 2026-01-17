@@ -11,6 +11,7 @@ from datetime import date, datetime, timedelta
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from utils.database import Database
 from utils.ai_helper import get_medicine_search
+from utils.styling import inject_css, render_sidebar_header, render_footer
 
 # Page configuration
 st.set_page_config(
@@ -19,122 +20,135 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS
+# Inject premium CSS
+inject_css(st)
+
+# Additional page-specific CSS
 st.markdown("""
 <style>
-    :root {
-        --lime-green: #32CD32;
-        --black: #000000;
-        --white: #FFFFFF;
-        --dark-gray: #1a1a1a;
-    }
-    
-    [data-testid="stSidebar"] {
-        background-color: var(--dark-gray);
-        border-right: 2px solid var(--lime-green);
-    }
-    
-    h1, h2, h3, h4 { color: var(--lime-green) !important; }
-    
     .today-card {
-        background: linear-gradient(145deg, var(--dark-gray), #0d0d0d);
-        border: 2px solid var(--lime-green);
-        border-radius: 15px;
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
         padding: 1.5rem;
-        margin: 0.5rem 0;
+        margin: 0.75rem 0;
+        transition: all 0.3s ease;
     }
     
-    .medicine-item {
-        background: var(--dark-gray);
-        border: 1px solid rgba(50, 205, 50, 0.3);
-        border-radius: 10px;
-        padding: 1rem;
-        margin: 0.5rem 0;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
+    .today-card:hover {
+        border-color: var(--primary-light);
+        box-shadow: 0 8px 25px rgba(99, 102, 241, 0.15);
     }
     
-    .medicine-item-taken {
-        border-color: var(--lime-green);
-        background: rgba(50, 205, 50, 0.1);
+    .today-card h4 {
+        background: linear-gradient(135deg, var(--primary-light), var(--accent));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin: 0;
+        font-size: 1.2rem;
     }
     
     .time-badge {
-        background: var(--lime-green);
-        color: var(--black);
-        padding: 0.3rem 0.8rem;
-        border-radius: 15px;
+        display: inline-block;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        color: var(--text-primary);
+        padding: 0.35rem 0.8rem;
+        border-radius: 20px;
         font-weight: 600;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
+        box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3);
+    }
+    
+    .taken-indicator {
+        color: var(--success);
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
     }
     
     .history-entry {
-        background: var(--dark-gray);
-        border-left: 4px solid var(--lime-green);
-        padding: 1rem;
+        background: var(--glass-bg);
+        border-left: 4px solid var(--primary);
+        padding: 1rem 1.25rem;
         margin: 0.5rem 0;
-        border-radius: 0 10px 10px 0;
+        border-radius: 0 12px 12px 0;
+        transition: all 0.3s ease;
     }
     
-    .history-date {
-        color: var(--lime-green);
-        font-weight: 600;
-        font-size: 0.9rem;
+    .history-entry:hover {
+        background: var(--bg-elevated);
+        border-left-color: var(--accent);
     }
     
-    .history-medicine {
-        color: var(--white);
+    .date-header {
         font-size: 1.1rem;
-        font-weight: 500;
-    }
-    
-    .history-time {
-        color: rgba(255,255,255,0.6);
-        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 1.5rem 0 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
     
     .stats-card {
-        background: linear-gradient(145deg, var(--lime-green), #28a428);
-        color: var(--black);
-        border-radius: 15px;
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        border-radius: 16px;
         padding: 1.5rem;
         text-align: center;
+        box-shadow: 0 8px 25px rgba(99, 102, 241, 0.3);
     }
     
     .stats-number {
         font-size: 2.5rem;
         font-weight: 800;
+        color: var(--text-primary);
     }
     
     .stats-label {
         font-size: 0.9rem;
-        opacity: 0.8;
+        color: rgba(255,255,255,0.8);
+        margin-top: 0.25rem;
     }
     
-    .stButton > button {
-        background: linear-gradient(145deg, var(--lime-green), #28a428);
-        color: var(--black) !important;
-        font-weight: 600;
-        border: none;
-        border-radius: 10px;
+    .section-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, var(--primary-light), var(--accent));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 1rem;
     }
     
-    .delete-btn button {
-        background: linear-gradient(145deg, #ff4444, #cc0000) !important;
+    .current-date {
+        font-size: 1.1rem;
+        color: var(--text-secondary);
+        margin-bottom: 1.5rem;
     }
     
-    .checkbox-container {
-        background: var(--dark-gray);
-        border: 1px solid rgba(50, 205, 50, 0.3);
-        border-radius: 10px;
-        padding: 1rem;
-        margin: 0.5rem 0;
+    .tip-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
+        padding: 1.25rem;
+        transition: all 0.3s ease;
     }
     
-    .taken-indicator {
-        color: var(--lime-green);
-        font-weight: 600;
+    .tip-card:hover {
+        border-color: var(--primary-light);
+        transform: translateY(-3px);
+    }
+    
+    .quick-log-form {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-top: 1rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -148,9 +162,7 @@ if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
 
 # Sidebar
-st.sidebar.markdown("# 💊 Remidex")
-st.sidebar.markdown("*Your Smart Medication Manager*")
-st.sidebar.markdown("---")
+render_sidebar_header(st)
 
 st.sidebar.markdown("### 🤖 AI Assistant")
 for msg in st.session_state.chat_history[-3:]:
@@ -167,19 +179,19 @@ if user_query:
     st.rerun()
 
 # Main content
-st.markdown("# 📜 History & Daily Log")
-st.markdown("*Track your daily medication intake and view your history*")
+st.markdown('<h1 class="page-header">📜 History & Daily Log</h1>', unsafe_allow_html=True)
+st.markdown('<p class="page-subtitle">Track your daily medication intake and view your history</p>', unsafe_allow_html=True)
 st.markdown("---")
 
 # Today's date display
 today = date.today()
-st.markdown(f"### 📅 Today: {today.strftime('%A, %B %d, %Y')}")
+st.markdown(f'<p class="current-date">📅 Today: <strong>{today.strftime("%A, %B %d, %Y")}</strong></p>', unsafe_allow_html=True)
 
 # Two columns: Today's meds and History
 today_col, history_col = st.columns([1, 1])
 
 with today_col:
-    st.markdown("### ✅ Today's Medications")
+    st.markdown('<p class="section-title">✅ Today\'s Medications</p>', unsafe_allow_html=True)
     st.markdown("*Check off medicines as you take them*")
     
     # Get scheduled medicines with their alert times
@@ -192,15 +204,19 @@ with today_col:
         taken_today.add(f"{h['medicine_name']}_{h['taken_time']}")
     
     if not medicines:
-        st.info("No medicines scheduled. Go to 'Add Medicine' to schedule your medications.")
+        st.markdown("""
+        <div class="info-box">
+            📝 No medicines scheduled. Go to 'Add Medicine' to schedule your medications.
+        </div>
+        """, unsafe_allow_html=True)
     else:
         # Group by medicine and show each alert time
         for med in medicines:
             st.markdown(f"""
             <div class="today-card">
-                <h4 style="margin: 0;">💊 {med['name']}</h4>
-                <p style="color: rgba(255,255,255,0.7); margin: 0.3rem 0;">
-                    {med['dosage']} - {med['frequency']}
+                <h4>💊 {med['name']}</h4>
+                <p style="color: var(--text-secondary); margin: 0.3rem 0;">
+                    {med['dosage']} — {med['frequency']}
                 </p>
             </div>
             """, unsafe_allow_html=True)
@@ -290,7 +306,7 @@ with today_col:
                 st.error("Please enter a medicine name.")
 
 with history_col:
-    st.markdown("### 📚 Medication History")
+    st.markdown('<p class="section-title">📚 Medication History</p>', unsafe_allow_html=True)
     
     # Stats summary
     all_history = st.session_state.db.get_all_history()
@@ -302,13 +318,28 @@ with history_col:
     
     stats_col1, stats_col2, stats_col3 = st.columns(3)
     with stats_col1:
-        st.metric("📊 Today", today_count)
+        st.markdown(f"""
+        <div class="stats-card">
+            <div class="stats-number">{today_count}</div>
+            <div class="stats-label">📊 Today</div>
+        </div>
+        """, unsafe_allow_html=True)
     with stats_col2:
-        st.metric("📈 This Week", weekly_count)
+        st.markdown(f"""
+        <div class="stats-card" style="background: linear-gradient(135deg, var(--accent), #06B6D4);">
+            <div class="stats-number">{weekly_count}</div>
+            <div class="stats-label">📈 This Week</div>
+        </div>
+        """, unsafe_allow_html=True)
     with stats_col3:
-        st.metric("📋 Total", len(all_history))
+        st.markdown(f"""
+        <div class="stats-card" style="background: linear-gradient(135deg, var(--success), #059669);">
+            <div class="stats-number">{len(all_history)}</div>
+            <div class="stats-label">📋 Total</div>
+        </div>
+        """, unsafe_allow_html=True)
     
-    st.markdown("---")
+    st.markdown("<br>", unsafe_allow_html=True)
     
     # Filter options
     filter_col1, filter_col2 = st.columns(2)
@@ -339,7 +370,11 @@ with history_col:
     
     # Display history
     if not filtered_history:
-        st.info("No history entries found for the selected filter.")
+        st.markdown("""
+        <div class="info-box">
+            📝 No history entries found for the selected filter.
+        </div>
+        """, unsafe_allow_html=True)
     else:
         # Group by date
         history_by_date = {}
@@ -359,7 +394,7 @@ with history_col:
             except:
                 display_date = date_key
             
-            st.markdown(f"#### 📅 {display_date}")
+            st.markdown(f'<p class="date-header">📅 {display_date}</p>', unsafe_allow_html=True)
             
             for entry in sorted(entries, key=lambda x: x['taken_time'], reverse=True):
                 col1, col2, col3 = st.columns([3, 2, 1])
@@ -379,14 +414,41 @@ with history_col:
 
 # Footer tips
 st.markdown("---")
-st.markdown("### 💡 Tips for Better Medication Adherence")
+st.markdown('<p class="section-title">💡 Tips for Better Medication Adherence</p>', unsafe_allow_html=True)
 tips_col1, tips_col2, tips_col3 = st.columns(3)
 
 with tips_col1:
-    st.info("⏰ **Set Reminders** - Use phone alarms alongside Remidex alerts for better adherence.")
+    st.markdown("""
+    <div class="tip-card">
+        <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">⏰</div>
+        <div style="color: var(--accent); font-weight: 600; margin-bottom: 0.5rem;">Set Reminders</div>
+        <div style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5;">
+            Use phone alarms alongside Remidex alerts for better adherence to your medication schedule.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 with tips_col2:
-    st.info("📊 **Track Progress** - Regularly check your history to see your medication patterns.")
+    st.markdown("""
+    <div class="tip-card">
+        <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">📊</div>
+        <div style="color: var(--accent); font-weight: 600; margin-bottom: 0.5rem;">Track Progress</div>
+        <div style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5;">
+            Regularly check your history to see your medication patterns and improve consistency.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 with tips_col3:
-    st.info("💊 **Don't Skip** - If you miss a dose, log it anyway and consult your doctor about what to do.")
+    st.markdown("""
+    <div class="tip-card">
+        <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">💊</div>
+        <div style="color: var(--accent); font-weight: 600; margin-bottom: 0.5rem;">Don't Skip</div>
+        <div style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5;">
+            If you miss a dose, log it anyway and consult your doctor about what to do next.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# Footer
+render_footer(st)

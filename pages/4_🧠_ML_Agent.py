@@ -175,11 +175,16 @@ if 'kb_chat_history' not in st.session_state:
 render_sidebar_header(st)
 
 st.sidebar.markdown("### 🤖 AI Assistant")
-for msg in st.session_state.chat_history[-3:]:
-    if msg["role"] == "user":
-        st.sidebar.markdown(f"**You:** {msg['content'][:40]}...")
-    else:
-        st.sidebar.markdown(f"**AI:** {msg['content'][:80]}...")
+st.sidebar.markdown("*Ask me about any medicine!*")
+
+# Scrollable chat container
+with st.sidebar.container(height=400):
+    for msg in st.session_state.chat_history:
+        if msg["role"] == "user":
+            st.markdown(f"**You:** {msg['content']}")
+        else:
+            st.markdown(f"**AI:** {msg['content']}")
+            st.markdown("---")
 
 user_query = st.sidebar.chat_input("Ask about medicines...", key="ml_chat")
 if user_query:

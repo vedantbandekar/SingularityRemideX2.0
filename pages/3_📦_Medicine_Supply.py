@@ -11,6 +11,7 @@ from datetime import date, timedelta
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from utils.database import Database
 from utils.ai_helper import get_medicine_search
+from utils.styling import inject_css, render_sidebar_header, render_footer
 
 # Page configuration
 st.set_page_config(
@@ -19,102 +20,134 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS
+# Inject premium CSS
+inject_css(st)
+
+# Additional page-specific CSS
 st.markdown("""
 <style>
-    :root {
-        --lime-green: #32CD32;
-        --black: #000000;
-        --white: #FFFFFF;
-        --dark-gray: #1a1a1a;
-    }
-    
-    [data-testid="stSidebar"] {
-        background-color: var(--dark-gray);
-        border-right: 2px solid var(--lime-green);
-    }
-    
-    h1, h2, h3, h4 { color: var(--lime-green) !important; }
-    
     .supply-card {
-        background: linear-gradient(145deg, var(--dark-gray), #0d0d0d);
-        border: 2px solid var(--lime-green);
-        border-radius: 15px;
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: 20px;
         padding: 1.5rem;
         margin: 1rem 0;
+        transition: all 0.3s ease;
+    }
+    
+    .supply-card:hover {
+        border-color: var(--primary-light);
+        transform: translateY(-3px);
+        box-shadow: 0 10px 30px rgba(99, 102, 241, 0.15);
     }
     
     .supply-card-warning {
-        border-color: #ff6b6b;
-        background: linear-gradient(145deg, #1a1a1a, #2a1515);
+        border-color: var(--danger) !important;
+        background: linear-gradient(145deg, rgba(239, 68, 68, 0.1), var(--glass-bg));
     }
     
     .supply-name {
-        color: var(--lime-green);
-        font-size: 1.4rem;
+        font-size: 1.3rem;
         font-weight: 700;
-        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, var(--primary-light), var(--accent));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0.75rem;
     }
     
     .supply-stat {
-        color: rgba(255,255,255,0.9);
-        font-size: 1rem;
-        margin: 0.3rem 0;
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+        margin: 0.4rem 0;
+    }
+    
+    .supply-stat strong {
+        color: var(--text-primary);
+    }
+    
+    .days-left {
+        font-size: 2.5rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, var(--primary-light), var(--accent));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .days-left-warning {
+        background: linear-gradient(135deg, var(--danger), #F87171);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .progress-container {
+        margin-top: 1rem;
+    }
+    
+    .progress-bar {
+        height: 8px;
+        background: var(--bg-elevated);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.5s ease;
     }
     
     .warning-banner {
-        background: linear-gradient(135deg, #ff6b6b, #ee5a5a);
-        color: white;
-        padding: 1rem 1.5rem;
-        border-radius: 10px;
-        margin: 0.5rem 0;
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.1));
+        border: 1px solid rgba(239, 68, 68, 0.4);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        color: #F87171;
         font-weight: 500;
+        margin: 0.75rem 0;
         animation: pulse-warning 2s ease-in-out infinite;
     }
     
     @keyframes pulse-warning {
         0%, 100% { opacity: 1; }
-        50% { opacity: 0.85; }
+        50% { opacity: 0.8; }
     }
     
     .ok-banner {
-        background: linear-gradient(135deg, var(--lime-green), #28a428);
-        color: var(--black);
-        padding: 0.8rem 1.2rem;
-        border-radius: 10px;
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1));
+        border: 1px solid rgba(16, 185, 129, 0.4);
+        border-radius: 12px;
+        padding: 0.75rem 1rem;
+        color: #34D399;
         font-weight: 500;
+        margin: 0.75rem 0;
     }
     
-    .days-left {
-        font-size: 2rem;
-        font-weight: 800;
-        color: var(--lime-green);
+    .section-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, var(--primary-light), var(--accent));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 1rem;
     }
     
-    .days-left-warning {
-        color: #ff6b6b;
+    .tip-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
+        padding: 1.25rem;
+        transition: all 0.3s ease;
     }
     
-    .stButton > button {
-        background: linear-gradient(145deg, var(--lime-green), #28a428);
-        color: var(--black) !important;
-        font-weight: 600;
-        border: none;
-        border-radius: 10px;
-    }
-    
-    .progress-bar {
-        height: 10px;
-        background: var(--dark-gray);
-        border-radius: 5px;
-        overflow: hidden;
-        margin-top: 0.5rem;
-    }
-    
-    .progress-fill {
-        height: 100%;
-        border-radius: 5px;
-        transition: width 0.3s ease;
+    .tip-card:hover {
+        border-color: var(--primary-light);
+        transform: translateY(-3px);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -128,9 +161,7 @@ if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
 
 # Sidebar
-st.sidebar.markdown("# 💊 Remidex")
-st.sidebar.markdown("*Your Smart Medication Manager*")
-st.sidebar.markdown("---")
+render_sidebar_header(st)
 
 st.sidebar.markdown("### 🤖 AI Assistant")
 for msg in st.session_state.chat_history[-3:]:
@@ -147,15 +178,15 @@ if user_query:
     st.rerun()
 
 # Main content
-st.markdown("# 📦 Medicine Supply Tracker")
-st.markdown("*Track your medicine stock and get alerts before running out*")
+st.markdown('<h1 class="page-header">📦 Medicine Supply Tracker</h1>', unsafe_allow_html=True)
+st.markdown('<p class="page-subtitle">Track your medicine stock and get alerts before running out</p>', unsafe_allow_html=True)
 st.markdown("---")
 
 # Form and list columns
 form_col, list_col = st.columns([1, 1])
 
 with form_col:
-    st.markdown("### ➕ Add/Update Supply")
+    st.markdown('<p class="section-title">➕ Add/Update Supply</p>', unsafe_allow_html=True)
     
     with st.form("add_supply_form", clear_on_submit=True):
         # Get medicine names from scheduled medicines for suggestions
@@ -206,7 +237,11 @@ with form_col:
         if daily_dosage > 0:
             days_supply = current_stock / daily_dosage
             end_date = date.today() + timedelta(days=days_supply)
-            st.info(f"📊 This supply will last approximately **{days_supply:.0f} days** (until {end_date.strftime('%B %d, %Y')})")
+            st.markdown(f"""
+            <div class="info-box">
+                📊 This supply will last approximately <strong>{days_supply:.0f} days</strong> (until {end_date.strftime('%B %d, %Y')})
+            </div>
+            """, unsafe_allow_html=True)
         
         submitted = st.form_submit_button("📦 Add/Update Supply", use_container_width=True)
         
@@ -227,12 +262,16 @@ with form_col:
                 st.error("Please enter a medicine name.")
 
 with list_col:
-    st.markdown("### 📊 Your Supplies")
+    st.markdown('<p class="section-title">📊 Your Supplies</p>', unsafe_allow_html=True)
     
     supplies = st.session_state.db.get_all_supplies()
     
     if not supplies:
-        st.info("No supplies being tracked yet. Add your first supply!")
+        st.markdown("""
+        <div class="info-box">
+            📝 No supplies being tracked yet. Add your first supply to get started!
+        </div>
+        """, unsafe_allow_html=True)
     else:
         # Summary stats
         total_supplies = len(supplies)
@@ -255,7 +294,7 @@ with list_col:
             
             # Determine progress percentage (max 100 for display)
             progress_pct = min((days_left / 30) * 100, 100) if days_left < float('inf') else 100
-            progress_color = "#ff6b6b" if is_low else "#32CD32"
+            progress_color = "linear-gradient(90deg, #EF4444, #F87171)" if is_low else "linear-gradient(90deg, var(--primary), var(--accent))"
             
             # Card styling
             card_class = "supply-card supply-card-warning" if is_low else "supply-card"
@@ -269,10 +308,12 @@ with list_col:
                 <div class="supply-stat"><strong>Alert Threshold:</strong> {threshold} days</div>
                 <div style="margin-top: 1rem;">
                     <span class="{days_class}">{days_left:.0f}</span>
-                    <span style="color: rgba(255,255,255,0.7);"> days remaining</span>
+                    <span style="color: var(--text-secondary);"> days remaining</span>
                 </div>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: {progress_pct}%; background: {progress_color};"></div>
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {progress_pct}%; background: {progress_color};"></div>
+                    </div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -288,7 +329,7 @@ with list_col:
             else:
                 st.markdown(f"""
                 <div class="ok-banner">
-                    ✅ Stock OK - Supply until {end_date.strftime('%B %d, %Y')}
+                    ✅ Stock OK — Supply until {end_date.strftime('%B %d, %Y')}
                 </div>
                 """, unsafe_allow_html=True)
             
@@ -324,11 +365,30 @@ with list_col:
 
 # Tips section
 st.markdown("---")
-st.markdown("### 💡 Supply Management Tips")
+st.markdown('<p class="section-title">💡 Supply Management Tips</p>', unsafe_allow_html=True)
 tips_col1, tips_col2 = st.columns(2)
 
 with tips_col1:
-    st.info("🔄 **Regular Updates** - Update your stock count whenever you refill your medicines to keep accurate tracking.")
+    st.markdown("""
+    <div class="tip-card">
+        <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">🔄</div>
+        <div style="color: var(--accent); font-weight: 600; margin-bottom: 0.5rem;">Regular Updates</div>
+        <div style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5;">
+            Update your stock count whenever you refill your medicines to keep accurate tracking.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 with tips_col2:
-    st.info("📅 **Plan Ahead** - Set the alert threshold to give yourself enough time to refill prescriptions.")
+    st.markdown("""
+    <div class="tip-card">
+        <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">📅</div>
+        <div style="color: var(--accent); font-weight: 600; margin-bottom: 0.5rem;">Plan Ahead</div>
+        <div style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5;">
+            Set the alert threshold to give yourself enough time to refill prescriptions before running out.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# Footer
+render_footer(st)

@@ -13,114 +13,74 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from utils.database import Database
 from utils.ai_helper import get_medicine_search
+from utils.styling import inject_css, render_sidebar_header, render_footer
 
 # Page configuration
 st.set_page_config(
-    page_title="Home | Remidex",
-    page_icon="🏠",
-    layout="wide"
+    page_title="Remidex | Smart Medication Manager",
+    page_icon="💊",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# Custom CSS
+# Inject premium CSS
+inject_css(st)
+
+# Additional Home page specific CSS
 st.markdown("""
 <style>
-    :root {
-        --lime-green: #32CD32;
-        --black: #000000;
-        --white: #FFFFFF;
-        --dark-gray: #1a1a1a;
-    }
-    
-    .big-title {
-        font-size: 4.5rem;
+    .hero-title {
+        font-size: 3.5rem;
         font-weight: 800;
-        color: var(--lime-green);
-        text-shadow: 0 0 30px rgba(50, 205, 50, 0.5);
-        margin-bottom: 0;
-        line-height: 1.1;
-        animation: glow 2s ease-in-out infinite alternate;
-    }
-    
-    @keyframes glow {
-        from { text-shadow: 0 0 20px rgba(50, 205, 50, 0.5); }
-        to { text-shadow: 0 0 40px rgba(50, 205, 50, 0.8); }
-    }
-    
-    .health-quote {
-        font-size: 1.3rem;
-        font-style: italic;
-        color: rgba(255, 255, 255, 0.85);
-        margin-top: 1.5rem;
-        padding: 1.5rem;
-        border-left: 5px solid var(--lime-green);
-        background: linear-gradient(90deg, rgba(50, 205, 50, 0.15), transparent);
-        border-radius: 0 10px 10px 0;
-    }
-    
-    .nav-card {
-        background: linear-gradient(145deg, var(--dark-gray), #0d0d0d);
-        border: 2px solid var(--lime-green);
-        border-radius: 15px;
-        padding: 1.5rem;
-        text-align: center;
-        margin-bottom: 1rem;
-        transition: all 0.3s ease;
-    }
-    
-    .nav-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 30px rgba(50, 205, 50, 0.3);
-    }
-    
-    .nav-card-icon {
-        font-size: 3rem;
+        background: linear-gradient(135deg, var(--text-primary), var(--primary));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
         margin-bottom: 0.5rem;
+        line-height: 1.2;
     }
     
-    .nav-card-title {
-        color: var(--lime-green);
+    .hero-subtitle {
         font-size: 1.2rem;
-        font-weight: 700;
-        margin: 0.5rem 0;
+        color: var(--text-secondary);
+        margin-bottom: 2rem;
+        font-weight: 300;
     }
     
-    .nav-card-desc {
-        color: rgba(255,255,255,0.7);
+    .quote-card {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(34, 211, 238, 0.1));
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-left: 4px solid var(--accent);
+        border-radius: 0 16px 16px 0;
+        padding: 1.5rem 2rem;
+        margin-top: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .quote-text {
+        font-size: 1.1rem;
+        font-style: italic;
+        color: var(--text-primary);
+        line-height: 1.6;
+    }
+    
+    .quote-author {
         font-size: 0.9rem;
-        margin: 0;
-    }
-    
-    .subtitle {
-        font-size: 1.5rem;
-        color: var(--lime-green);
-        font-weight: 500;
-        margin-top: -10px;
+        color: var(--primary-light);
+        margin-top: 0.5rem;
+        font-weight: 600;
     }
     
     .welcome-text {
-        color: rgba(255,255,255,0.85);
-        font-size: 1.15rem;
-        line-height: 1.8;
-        margin-top: 2rem;
+        font-size: 1.1rem;
+        line-height: 1.7;
+        color: var(--text-secondary);
+        margin-bottom: 2rem;
     }
     
-    .feature-badge {
-        display: inline-block;
-        background: var(--lime-green);
-        color: var(--black);
-        padding: 0.3rem 0.8rem;
-        border-radius: 20px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        margin: 0.2rem;
+    .welcome-text strong {
+        color: var(--primary-light);
     }
-    
-    [data-testid="stSidebar"] {
-        background-color: var(--dark-gray);
-        border-right: 2px solid var(--lime-green);
-    }
-    
-    h1, h2, h3 { color: var(--lime-green) !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -133,19 +93,20 @@ if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
 
 # Sidebar
-st.sidebar.markdown("# 💊 Remidex")
-st.sidebar.markdown("*Your Smart Medication Manager*")
-st.sidebar.markdown("---")
+render_sidebar_header(st)
 
 # Sidebar AI Chatbot
 st.sidebar.markdown("### 🤖 AI Assistant")
 st.sidebar.markdown("*Ask me about any medicine!*")
 
-for msg in st.session_state.chat_history[-3:]:
-    if msg["role"] == "user":
-        st.sidebar.markdown(f"**You:** {msg['content'][:40]}...")
-    else:
-        st.sidebar.markdown(f"**AI:** {msg['content'][:80]}...")
+# Scrollable chat container
+with st.sidebar.container(height=400):
+    for msg in st.session_state.chat_history:
+        if msg["role"] == "user":
+            st.markdown(f"**You:** {msg['content']}")
+        else:
+            st.markdown(f"**AI:** {msg['content']}")
+            st.markdown("---")
 
 user_query = st.sidebar.chat_input("Ask about medicines...", key="home_chat")
 if user_query:
@@ -155,84 +116,88 @@ if user_query:
     st.rerun()
 
 # Main content
-col1, col2 = st.columns([6, 4])
+st.markdown('<h1 class="hero-title">Remidex</h1>', unsafe_allow_html=True)
+st.markdown('<p class="hero-subtitle">Smart Medication Management System</p>', unsafe_allow_html=True)
 
-with col1:
-    st.markdown('<p class="big-title">Remidex</p>', unsafe_allow_html=True)
-    st.markdown('<p class="subtitle">Smart Medication Management System</p>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="health-quote">
-        "Healing is a matter of time, but it is sometimes also a matter of opportunity."
-        <br><span style="float: right; font-size: 0.95rem; margin-top: 0.5rem;">— Hippocrates</span>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="welcome-text">
-        Welcome to <strong style="color: #32CD32;">Remidex</strong> — your personal medication companion. 
-        Take control of your health with our comprehensive medication management system.
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div>
-        <span class="feature-badge">📅 Schedule Alerts</span>
-        <span class="feature-badge">📦 Track Supply</span>
-        <span class="feature-badge">🧠 AI Insights</span>
-        <span class="feature-badge">📜 History Log</span>
-    </div>
-    """, unsafe_allow_html=True)
+st.markdown("""
+<div class="quote-card">
+    <p class="quote-text">"Healing is a matter of time, but it is sometimes also a matter of opportunity."</p>
+    <p class="quote-author">— Hippocrates</p>
+</div>
+""", unsafe_allow_html=True)
 
-with col2:
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Navigation cards as actual buttons
+st.markdown("""
+<p class="welcome-text">
+    Welcome to <strong>Remidex</strong> — your personal medication companion. 
+    Take control of your health with our comprehensive medication management system 
+    powered by AI-driven insights. Track your medicines, manage supplies, and never miss a dose.
+</p>
+""", unsafe_allow_html=True)
+
+st.markdown("### Features")
+st.markdown("""
+<div>
+    <span class="feature-badge">📅 Smart Scheduling</span>
+    <span class="feature-badge">📦 Supply Tracking</span>
+    <span class="feature-badge">🧠 AI Knowledge Hub</span>
+    <span class="feature-badge">📜 Detailed History</span>
+</div>
+""", unsafe_allow_html=True)
+
+st.markdown("---")
+
+# Navigation Hub
+st.markdown("### 🧭 Quick Navigation")
+
+nav_col1, nav_col2, nav_col3, nav_col4 = st.columns(4)
+
+with nav_col1:
     st.markdown("""
-    <div class="nav-card">
+    <div class="nav-card" style="min-height: 220px;">
         <div class="nav-card-icon">💊</div>
         <p class="nav-card-title">Add Medicine</p>
-        <p class="nav-card-desc">Schedule your medications & set alerts</p>
+        <p class="nav-card-desc">Schedule & Alerts</p>
     </div>
     """, unsafe_allow_html=True)
-    if st.button("Go to Add Medicine", key="nav_add", use_container_width=True):
+    if st.button("Add Medicine", key="nav_add", use_container_width=True):
         st.switch_page("pages/2_💊_Add_Medicine.py")
-    
+
+with nav_col2:
     st.markdown("""
-    <div class="nav-card">
+    <div class="nav-card" style="min-height: 220px;">
         <div class="nav-card-icon">📦</div>
-        <p class="nav-card-title">Medicine Supply</p>
-        <p class="nav-card-desc">Track stock & get low supply alerts</p>
+        <p class="nav-card-title">Supply Tracker</p>
+        <p class="nav-card-desc">Stock & Low Alerts</p>
     </div>
     """, unsafe_allow_html=True)
-    if st.button("Go to Supply Tracker", key="nav_supply", use_container_width=True):
+    if st.button("Manage Supply", key="nav_supply", use_container_width=True):
         st.switch_page("pages/3_📦_Medicine_Supply.py")
-    
+
+with nav_col3:
     st.markdown("""
-    <div class="nav-card">
+    <div class="nav-card" style="min-height: 220px;">
         <div class="nav-card-icon">🧠</div>
         <p class="nav-card-title">Knowledge Hub</p>
-        <p class="nav-card-desc">AI-powered medicine insights</p>
+        <p class="nav-card-desc">AI Insights & Info</p>
     </div>
     """, unsafe_allow_html=True)
-    if st.button("Go to Knowledge Hub", key="nav_ml", use_container_width=True):
+    if st.button("Ask AI", key="nav_ml", use_container_width=True):
         st.switch_page("pages/4_🧠_ML_Agent.py")
-    
+
+with nav_col4:
     st.markdown("""
-    <div class="nav-card">
+    <div class="nav-card" style="min-height: 220px;">
         <div class="nav-card-icon">📜</div>
         <p class="nav-card-title">History & Log</p>
-        <p class="nav-card-desc">View medication history & daily log</p>
+        <p class="nav-card-desc">View Logs & Stats</p>
     </div>
     """, unsafe_allow_html=True)
-    if st.button("Go to History", key="nav_history", use_container_width=True):
+    if st.button("View History", key="nav_history", use_container_width=True):
         st.switch_page("pages/5_📜_History.py")
 
 # Quick stats
 st.markdown("---")
-st.markdown("### 📊 Quick Stats")
+st.markdown('<p class="page-header" style="font-size: 1.5rem;">📊 Dashboard Overview</p>', unsafe_allow_html=True)
 
 stats_col1, stats_col2, stats_col3, stats_col4 = st.columns(4)
 
@@ -241,13 +206,28 @@ supplies = st.session_state.db.get_all_supplies()
 history = st.session_state.db.get_today_history()
 
 with stats_col1:
-    st.metric("💊 Scheduled Medicines", len(medicines))
+    st.markdown(f"""
+    <div class="stat-card">
+        <div class="stat-value">{len(medicines)}</div>
+        <div class="stat-label">Scheduled Medicines</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 with stats_col2:
-    st.metric("📦 Tracked Supplies", len(supplies))
+    st.markdown(f"""
+    <div class="stat-card">
+        <div class="stat-value">{len(supplies)}</div>
+        <div class="stat-label">Tracked Supplies</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 with stats_col3:
-    st.metric("✅ Taken Today", len(history))
+    st.markdown(f"""
+    <div class="stat-card">
+        <div class="stat-value">{len(history)}</div>
+        <div class="stat-label">Taken Today</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 with stats_col4:
     # Count low stock items
@@ -257,12 +237,13 @@ with stats_col4:
             days_left = supply['current_stock'] / supply['daily_dosage']
             if days_left <= supply['alert_threshold']:
                 low_stock += 1
-    st.metric("⚠️ Low Stock Alerts", low_stock)
+    
+    st.markdown(f"""
+    <div class="stat-card" style="border-color: {'var(--danger)' if low_stock > 0 else 'var(--glass-border)'};">
+        <div class="stat-value" style="color: {'var(--danger)' if low_stock > 0 else 'inherit'}; background: none; -webkit-text-fill-color: {'var(--danger)' if low_stock > 0 else 'var(--text-primary)'};">{low_stock}</div>
+        <div class="stat-label">Low Stock Alerts</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 # Footer
-st.markdown("---")
-st.markdown("""
-<div style="text-align: center; color: rgba(255,255,255,0.5); font-size: 0.9rem; padding: 1rem;">
-    Made with ❤️ for better health management | <strong style="color: #32CD32;">Remidex</strong> © 2026
-</div>
-""", unsafe_allow_html=True)
+render_footer(st)

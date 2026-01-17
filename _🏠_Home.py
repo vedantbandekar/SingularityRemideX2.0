@@ -147,6 +147,11 @@ if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
 
 # Sidebar
+<<<<<<< HEAD
+from utils.sidebar import render_ai_sidebar
+
+render_ai_sidebar()
+=======
 render_sidebar_header(st)
 st.sidebar.markdown("### 🏠 Dashboard")
 st.sidebar.info("Welcome back! Here is your daily health overview.")
@@ -166,6 +171,7 @@ if user_query:
     response = st.session_state.medicine_search.answer_query(user_query)
     st.session_state.chat_history.append({"role": "assistant", "content": response})
     st.rerun()
+>>>>>>> 8acf574b2a3a38fa0451a4cf60d4aaff499c83d5
 
 # --- MAIN CONTENT ---
 

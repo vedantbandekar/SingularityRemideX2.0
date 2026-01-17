@@ -172,112 +172,97 @@ if 'kb_chat_history' not in st.session_state:
     st.session_state.kb_chat_history = []
 
 # Sidebar
-render_sidebar_header(st)
+from utils.sidebar import render_ai_sidebar
 
-st.sidebar.markdown("### 🤖 AI Assistant")
-st.sidebar.markdown("*Ask me about any medicine!*")
-
-# Scrollable chat container
-with st.sidebar.container(height=400):
-    for msg in st.session_state.chat_history:
-        if msg["role"] == "user":
-            st.markdown(f"**You:** {msg['content']}")
-        else:
-            st.markdown(f"**AI:** {msg['content']}")
-            st.markdown("---")
-
-user_query = st.sidebar.chat_input("Ask about medicines...", key="ml_chat")
-if user_query:
-    st.session_state.chat_history.append({"role": "user", "content": user_query})
-    response = st.session_state.medicine_search.answer_query(user_query)
-    st.session_state.chat_history.append({"role": "assistant", "content": response})
-    st.rerun()
+render_ai_sidebar()
 
 # Main content
 st.markdown('<h1 class="page-header">🧠 Knowledge Hub</h1>', unsafe_allow_html=True)
 st.markdown('<p class="page-subtitle">Your AI-powered medicine information center</p>', unsafe_allow_html=True)
 st.markdown("---")
 
-# Search tabs
-tab1, tab2 = st.tabs(["🔍 Medicine Search", "💬 Ask AI"])
+st.markdown('<p class="section-title">Search Medicine Database</p>', unsafe_allow_html=True)
+st.markdown("*Search from over 7,000 medicines to find detailed information*")
 
-with tab1:
-    st.markdown('<p class="section-title">Search Medicine Database</p>', unsafe_allow_html=True)
-    st.markdown("*Search from over 7,000 medicines to find detailed information*")
+# Search input
+search_col1, search_col2 = st.columns([4, 1])
+with search_col1:
+    search_query = st.text_input(
+        "Search for a medicine",
+        placeholder="Type medicine name (e.g., Paracetamol, Amoxicillin, Aspirin...)",
+        key="med_search"
+    )
+with search_col2:
+    st.write("")
+    st.write("")
+    search_btn = st.button("🔍 Search", use_container_width=True)
+
+# Quick search suggestions
+st.markdown("**Quick Searches:**")
+quick_col1, quick_col2, quick_col3, quick_col4, quick_col5 = st.columns(5)
+with quick_col1:
+    if st.button("Paracetamol", key="q1"):
+        search_query = "Paracetamol"
+with quick_col2:
+    if st.button("Amoxicillin", key="q2"):
+        search_query = "Amoxicillin"
+with quick_col3:
+    if st.button("Azithromycin", key="q3"):
+        search_query = "Azithromycin"
+with quick_col4:
+    if st.button("Omeprazole", key="q4"):
+        search_query = "Omeprazole"
+with quick_col5:
+    if st.button("Metformin", key="q5"):
+        search_query = "Metformin"
+
+st.markdown("---")
+
+# Search results
+if search_query:
+    results = st.session_state.medicine_search.search_medicine(search_query, limit=5)
     
-    # Search input
-    search_col1, search_col2 = st.columns([4, 1])
-    with search_col1:
-        search_query = st.text_input(
-            "Search for a medicine",
-            placeholder="Type medicine name (e.g., Paracetamol, Amoxicillin, Aspirin...)",
-            key="med_search"
-        )
-    with search_col2:
-        st.write("")
-        st.write("")
-        search_btn = st.button("🔍 Search", use_container_width=True)
-    
-    # Quick search suggestions
-    st.markdown("**Quick Searches:**")
-    quick_col1, quick_col2, quick_col3, quick_col4, quick_col5 = st.columns(5)
-    with quick_col1:
-        if st.button("Paracetamol", key="q1"):
-            search_query = "Paracetamol"
-    with quick_col2:
-        if st.button("Amoxicillin", key="q2"):
-            search_query = "Amoxicillin"
-    with quick_col3:
-        if st.button("Azithromycin", key="q3"):
-            search_query = "Azithromycin"
-    with quick_col4:
-        if st.button("Omeprazole", key="q4"):
-            search_query = "Omeprazole"
-    with quick_col5:
-        if st.button("Metformin", key="q5"):
-            search_query = "Metformin"
-    
-    st.markdown("---")
-    
-    # Search results
-    if search_query:
-        results = st.session_state.medicine_search.search_medicine(search_query, limit=5)
+    if results:
+        st.markdown(f"### Found {len(results)} result(s) for '{search_query}'")
         
-        if results:
-            st.markdown(f"### Found {len(results)} result(s) for '{search_query}'")
-            
-            for med in results:
-                with st.expander(f"💊 {med['name']} — Match: {med['match_score']}%", expanded=True):
-                    # Header with key info
-                    info_col1, info_col2, info_col3 = st.columns(3)
-                    with info_col1:
-                        st.metric("💰 Price", f"₹{med['price']}")
-                    with info_col2:
-                        st.metric("🏭 Manufacturer", med['manufacturer'][:20] + "..." if len(str(med['manufacturer'])) > 20 else med['manufacturer'])
-                    with info_col3:
-                        st.metric("📦 Pack Size", med['pack_size'])
-                    
-                    # Composition
-                    st.markdown(f"""
-                    <div class="info-section">
-                        <div class="info-title">🧪 Salt Composition</div>
-                        <div class="info-content">{med['salt_composition']}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Description/Benefits
-                    st.markdown(f"""
-                    <div class="info-section">
-                        <div class="info-title">📋 Description & Benefits</div>
-                        <div class="info-content">{med['description'][:800]}{'...' if len(str(med['description'])) > 800 else ''}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Side Effects
-                    side_effects = med['side_effects']
-                    if side_effects and side_effects != 'No side effects listed':
+        for med in results:
+            with st.expander(f"💊 {med['name']} — Match: {med['match_score']}%", expanded=True):
+                # Header with key info
+                info_col1, info_col2, info_col3 = st.columns(3)
+                with info_col1:
+                    st.metric("💰 Price", f"₹{med['price']}")
+                with info_col2:
+                    st.metric("🏭 Manufacturer", med['manufacturer'][:20] + "..." if len(str(med['manufacturer'])) > 20 else med['manufacturer'])
+                with info_col3:
+                    st.metric("📦 Pack Size", med['pack_size'])
+                
+                # Composition
+                st.markdown(f"""
+                <div class="info-section">
+                    <div class="info-title">🧪 Salt Composition</div>
+                    <div class="info-content">{med['salt_composition']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Description/Benefits
+                st.markdown(f"""
+                <div class="info-section">
+                    <div class="info-title">📋 Description & Benefits</div>
+                    <div class="info-content">{med['description'][:800]}{'...' if len(str(med['description'])) > 800 else ''}</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Side Effects
+                side_effects = med['side_effects']
+                if side_effects and side_effects != 'No side effects listed':
+                    effects_list = []
+                    if isinstance(side_effects, list):
+                        effects_list = side_effects
+                    elif isinstance(side_effects, str):
                         effects_list = side_effects.split(',')
-                        effects_html = "".join([f"<li>{e.strip()}</li>" for e in effects_list[:10]])
+                    
+                    if effects_list:
+                        effects_html = "".join([f"<li>{str(e).strip()}</li>" for e in effects_list[:10]])
                         st.markdown(f"""
                         <div class="info-section side-effects-section">
                             <div class="info-title">⚠️ Side Effects</div>
@@ -288,98 +273,24 @@ with tab1:
                             </div>
                         </div>
                         """, unsafe_allow_html=True)
+                
+                # Drug Interactions
+                interactions = med['drug_interactions']
+                # Check for dict structure
+                if isinstance(interactions, dict) and interactions.get('drug') and len(interactions['drug']) > 0:
+                    st.markdown("""
+                    <div class="info-section interaction-section">
+                        <div class="info-title">🔗 Drug Interactions</div>
+                    </div>
+                    """, unsafe_allow_html=True)
                     
-                    # Drug Interactions
-                    interactions = med['drug_interactions']
-                    if interactions.get('drug') and len(interactions['drug']) > 0:
-                        st.markdown("""
-                        <div class="info-section interaction-section">
-                            <div class="info-title">🔗 Drug Interactions</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        for i, (drug, effect) in enumerate(zip(interactions['drug'][:5], interactions['effect'][:5])):
-                            effect_color = "#EF4444" if "LIFE-THREATENING" in effect else "#F59E0B" if "SERIOUS" in effect else "#10B981"
-                            st.markdown(f"- **{drug}**: <span style='color: {effect_color};'>{effect}</span>", unsafe_allow_html=True)
-                    
-                    st.markdown("---")
-        else:
-            st.warning(f"No results found for '{search_query}'. Try a different search term.")
-
-with tab2:
-    st.markdown('<p class="section-title">💬 Ask the AI Assistant</p>', unsafe_allow_html=True)
-    st.markdown("*Ask natural language questions about medicines*")
-    
-    # Example questions
-    st.markdown("**Try asking:**")
-    example_col1, example_col2 = st.columns(2)
-    with example_col1:
-        if st.button("What are the side effects of Azithromycin?", key="ex1"):
-            st.session_state.kb_chat_history.append({
-                "role": "user",
-                "content": "What are the side effects of Azithromycin?"
-            })
-            st.session_state.kb_chat_history.append({
-                "role": "assistant",
-                "content": st.session_state.medicine_search.answer_query("What are the side effects of Azithromycin?")
-            })
-            st.rerun()
-    with example_col2:
-        if st.button("Tell me about drug interactions of Paracetamol", key="ex2"):
-            st.session_state.kb_chat_history.append({
-                "role": "user",
-                "content": "Tell me about drug interactions of Paracetamol"
-            })
-            st.session_state.kb_chat_history.append({
-                "role": "assistant",
-                "content": st.session_state.medicine_search.answer_query("Tell me about drug interactions of Paracetamol")
-            })
-            st.rerun()
-    
-    st.markdown("---")
-    
-    # Chat container
-    chat_container = st.container()
-    
-    with chat_container:
-        # Display chat history
-        for msg in st.session_state.kb_chat_history:
-            if msg["role"] == "user":
-                st.markdown(f"""
-                <div class="chat-message-user">
-                    <strong>You:</strong> {msg['content']}
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                with st.container():
-                    st.markdown("**🤖 AI Assistant:**")
-                    st.markdown(msg['content'])
-                    st.markdown("---")
-    
-    # Chat input
-    user_input = st.chat_input("Ask a question about any medicine...", key="kb_chat_input")
-    
-    if user_input:
-        # Add to history
-        st.session_state.kb_chat_history.append({
-            "role": "user",
-            "content": user_input
-        })
-        
-        # Get AI response
-        response = st.session_state.medicine_search.answer_query(user_input)
-        st.session_state.kb_chat_history.append({
-            "role": "assistant",
-            "content": response
-        })
-        
-        st.rerun()
-    
-    # Clear chat button
-    if st.session_state.kb_chat_history:
-        if st.button("🗑️ Clear Chat", key="clear_kb_chat"):
-            st.session_state.kb_chat_history = []
-            st.rerun()
+                    for i, (drug, effect) in enumerate(zip(interactions['drug'][:5], interactions['effect'][:5])):
+                        effect_color = "#EF4444" if "LIFE-THREATENING" in effect else "#F59E0B" if "SERIOUS" in effect else "#10B981"
+                        st.markdown(f"- **{drug}**: <span style='color: {effect_color};'>{effect}</span>", unsafe_allow_html=True)
+                
+                st.markdown("---")
+    else:
+        st.warning(f"No results found for '{search_query}'. Try a different search term.")
 
 # Info section
 # Info section

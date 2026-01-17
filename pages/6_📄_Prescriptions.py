@@ -54,8 +54,9 @@ if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
 
 # Sidebar
-render_sidebar_header(st)
+from utils.sidebar import render_ai_sidebar
 
+render_ai_sidebar()
 st.sidebar.markdown("### 📝 Notes")
 st.sidebar.info("Use good lighting when capturing prescriptions for better readability.")
 

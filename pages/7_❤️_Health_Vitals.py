@@ -77,7 +77,9 @@ if 'db' not in st.session_state:
     st.session_state.db = Database()
 
 # Sidebar
-render_sidebar_header(st)
+from utils.sidebar import render_ai_sidebar
+
+render_ai_sidebar()
 st.sidebar.markdown("### 📈 Health Tracker")
 st.sidebar.info("Tracking your vitals regularly can help early detection of health issues.")
 

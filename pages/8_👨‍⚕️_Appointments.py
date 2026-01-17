@@ -110,8 +110,12 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Initialize
+# Initialize
 if 'db' not in st.session_state:
     st.session_state.db = Database()
+
+# Ensure tables are created
+st.session_state.db._init_db()
 
 # Sidebar
 from utils.sidebar import render_ai_sidebar
@@ -215,8 +219,10 @@ else:
                 tag = f"IN {days_until} DAYS"
             
             # Prepare optional notes HTML
-            notes_content = appt['notes'] if (appt['notes'] and appt['notes'].strip()) else "No notes added."
-            notes_html = f'<div style="font-size:0.9rem; margin-top:0.25rem; font-style:italic; color:var(--text-secondary);">📝 {notes_content}</div>'
+            if appt['notes'] and appt['notes'].strip():
+                notes_html = f'<div style="font-size:0.9rem; margin-top:0.25rem; font-style:italic; color:var(--text-secondary);">📝 {appt["notes"]}</div>'
+            else:
+                notes_html = '<div style="font-size:0.9rem; margin-top:0.25rem; font-style:italic; color:var(--text-secondary); opacity:0.5;">📝 No notes</div>'
             
             col1, col2 = st.columns([5, 1])
             with col1:

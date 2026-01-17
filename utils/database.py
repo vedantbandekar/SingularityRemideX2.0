@@ -326,6 +326,50 @@ class Database:
         conn.close()
         return result['count'] > 0
 
+    def get_streak_days(self) -> int:
+        """Calculate the current streak of consecutive days with medication taken"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        # Get all unique dates from history, sorted descending
+        cursor.execute("SELECT DISTINCT taken_date FROM history ORDER BY taken_date DESC")
+        rows = cursor.fetchall()
+        conn.close()
+        
+        if not rows:
+            return 0
+            
+        dates = [row['taken_date'] for row in rows]
+        today_str = date.today().isoformat()
+        yesterday_str = (date.today() - timedelta(days=1)).isoformat()
+        
+        streak = 0
+        current_check = date.today()
+        
+        # If no entry for today yet, check relative to yesterday?
+        # Standard streak logic: if today is empty, streak is maintained if yesterday was done.
+        # But for 'Current Streak', usually counts up to today.
+        # Let's count backwards from today IF today has entry, OR from yesterday.
+        
+        has_today = today_str in dates
+        if not has_today:
+            # If today not done, start checking from yesterday. 
+            # If yesterday missing too, streak is 0.
+            current_check = date.today() - timedelta(days=1)
+            if current_check.isoformat() not in dates:
+                return 0
+        
+        # Calculate streak
+        while True:
+            check_str = current_check.isoformat()
+            if check_str in dates:
+                streak += 1
+                current_check = current_check - timedelta(days=1)
+            else:
+                break
+                
+        return streak
+
     # ==================== VITALS CRUD ====================
 
     def add_vital(self, date_str: str, time_str: str, vital_type: str, value: str, unit: str, notes: str = ""):

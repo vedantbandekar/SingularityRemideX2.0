@@ -76,6 +76,9 @@ st.markdown("""
 if 'db' not in st.session_state:
     st.session_state.db = Database()
 
+# Ensure tables are created (in case of hot reload updates)
+st.session_state.db._init_db()
+
 # Sidebar
 render_sidebar_header(st)
 st.sidebar.markdown("### 📈 Health Tracker")

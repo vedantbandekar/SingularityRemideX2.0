@@ -290,7 +290,7 @@ with tab1:
                         """, unsafe_allow_html=True)
                     
                     # Drug Interactions
-                    interactions = med['drug_interactions']
+                    interactions = med.get('drug_interactions', {})
                     if interactions.get('drug') and len(interactions['drug']) > 0:
                         st.markdown("""
                         <div class="info-section interaction-section">

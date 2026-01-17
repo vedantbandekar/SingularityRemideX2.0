@@ -26,7 +26,7 @@ inject_css(st)
 # Additional page-specific CSS
 st.markdown("""
 <style>
-    .form-container {
+    [data-testid="stForm"] {
         background: var(--glass-bg);
         backdrop-filter: blur(20px);
         border: 1px solid var(--glass-border);
@@ -135,7 +135,7 @@ st.markdown("---")
 st.markdown('<p class="section-title">➕ Add New Medicine</p>', unsafe_allow_html=True)
 
 with st.container():
-    st.markdown('<div class="form-container">', unsafe_allow_html=True)
+
     with st.form("add_medicine_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
         with col1:
@@ -205,7 +205,7 @@ with st.container():
                 st.rerun()
             else:
                 st.error("Please fill in medicine name and dosage.")
-    st.markdown('</div>', unsafe_allow_html=True)
+
 
 st.markdown("---")
 

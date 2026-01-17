@@ -147,44 +147,14 @@ if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
 
 # Sidebar
-<<<<<<< HEAD
 from utils.sidebar import render_ai_sidebar
 
 render_ai_sidebar()
-=======
-render_sidebar_header(st)
-st.sidebar.markdown("### 🏠 Dashboard")
-st.sidebar.info("Welcome back! Here is your daily health overview.")
-
-# Scrollable chat
-with st.sidebar.container(height=300):
-    for msg in st.session_state.chat_history:
-        if msg["role"] == "user":
-            st.markdown(f"**You:** {msg['content']}")
-        else:
-            st.markdown(f"**AI:** {msg['content']}")
-            st.markdown("---")
-
-user_query = st.sidebar.chat_input("Ask about medicines...", key="home_chat")
-if user_query:
-    st.session_state.chat_history.append({"role": "user", "content": user_query})
-    response = st.session_state.medicine_search.answer_query(user_query)
-    st.session_state.chat_history.append({"role": "assistant", "content": response})
-    st.rerun()
->>>>>>> 8acf574b2a3a38fa0451a4cf60d4aaff499c83d5
 
 # --- MAIN CONTENT ---
 
 # Hero Header
-current_hour = datetime.now().hour
-if 5 <= current_hour < 12:
-    greeting = "Good Morning ☀️"
-elif 12 <= current_hour < 18:
-    greeting = "Good Afternoon 🌤️"
-else:
-    greeting = "Good Evening 🌙"
-
-st.markdown(f'<h1 class="page-header">{greeting}</h1>', unsafe_allow_html=True)
+st.markdown(f'<h1 class="page-header">RemideX</h1>', unsafe_allow_html=True)
 st.markdown(f'<p class="page-subtitle">Today is <strong>{date.today().strftime("%A, %B %d, %Y")}</strong></p>', unsafe_allow_html=True)
 
 # 1. TOP METRICS

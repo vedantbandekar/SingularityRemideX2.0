@@ -100,7 +100,7 @@ with st.container():
     # Move selectbox OUTSIDE the form to trigger updates
     vital_type = st.selectbox(
         "Select Metric Type",
-        ["Blood Pressure", "Blood Sugar", "Heart Rate (Pulse)", "Weight", "Body Temperature", "SpO2"]
+        ["Blood Pressure", "Blood Sugar", "Heart Rate (Pulse)", "Weight", "Height", "Body Temperature", "SpO2"]
     )
     
     with st.form("log_vital_form", clear_on_submit=True):
@@ -120,6 +120,19 @@ with st.container():
             elif vital_type == "Weight":
                 value = str(st.number_input("Weight(KG)", 0.0, 300.0, 70.0, step=0.1, key=f"weight_{vital_type}"))
                 unit = "kg"
+            elif vital_type == "Height":
+                c1, c2 = st.columns(2)
+                with c1:
+                    feet = st.number_input("Feet", 1, 8, 5, key="h_ft")
+                with c2:
+                    inches = st.number_input("Inches", 0, 11, 8, key="h_in")
+                # Convert to cm for storage standard
+                cm_val = (feet * 30.48) + (inches * 2.54)
+                value = f"{cm_val:.1f}"
+                unit = "cm"
+                # Store display string in notes if empty
+                extra_note = f" (Input: {feet}'{inches}\")"
+                
             elif vital_type == "Body Temperature":
                 value = str(st.number_input("Temperature", 30.0, 45.0, 36.6, step=0.1, key=f"temp_{vital_type}"))
                 unit = "°C"
@@ -139,6 +152,10 @@ with st.container():
         submitted = st.form_submit_button("💾 Save Log", use_container_width=True)
         
         if submitted:
+            # Append height note if applicable
+            if vital_type == "Height":
+                 notes = (notes + extra_note).strip()
+
             # Save to DB
             st.session_state.db.add_vital(
                 log_date.isoformat(),
@@ -154,6 +171,52 @@ with st.container():
     st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown("---")
+
+# Helper for status color
+def get_vital_status(v_type, val_str):
+    """Returns color (hex) based on thresholds"""
+    # Colors
+    RED = "#EF4444"
+    YELLOW = "#F59E0B"
+    GREEN = "#10B981"
+    
+    try:
+        if v_type == "Blood Pressure":
+            sys_v, dia_v = map(int, val_str.split('/'))
+            if sys_v >= 140 or dia_v >= 90: return RED, "High"
+            if sys_v >= 120 or dia_v >= 80: return YELLOW, "Elevated"
+            return GREEN, "Normal"
+            
+        elif v_type == "Blood Sugar":
+            v = float(val_str)
+            # General random thresholds
+            if v > 180: return RED, "High"
+            if v > 140: return YELLOW, "Elevated"
+            if v < 70: return RED, "Low"
+            return GREEN, "Normal"
+            
+        elif v_type == "Heart Rate (Pulse)":
+            v = int(float(val_str))
+            if v > 100: return YELLOW, "Tachycardia"
+            if v < 60: return YELLOW, "Bradycardia"
+            return GREEN, "Normal"
+            
+        elif v_type == "SpO2":
+            v = float(val_str)
+            if v < 92: return RED, "Low"
+            if v < 95: return YELLOW, "Concering"
+            return GREEN, "Normal"
+            
+        elif v_type == "Body Temperature":
+            v = float(val_str)
+            if v > 38: return RED, "Fever"
+            if v > 37.5: return YELLOW, "Elevated"
+            return GREEN, "Normal"
+            
+    except:
+        pass
+    
+    return "var(--text-primary)", "" # Default
 
 # SECTION 2: CHARTS & HISTORY
 st.markdown('<p class="section-title">📊 Trends & History</p>', unsafe_allow_html=True)
@@ -215,13 +278,16 @@ else:
     display_df = df[df['vital_type'] == selected_type][['date', 'time', 'value', 'unit', 'notes', 'id']].sort_values(['date', 'time'], ascending=False)
     
     for idx, row in display_df.iterrows():
+        color, status = get_vital_status(selected_type, row['value'])
+        
         col1, col2, col3, col4 = st.columns([2, 2, 4, 1])
         with col1:
             st.write(f"**{row['date']}**")
         with col2:
             st.write(f"{row['time']}")
         with col3:
-             st.write(f"**{row['value']}** {row['unit']}")
+             # Colored value
+             st.markdown(f"**<span style='color:{color}'>{row['value']}</span>** {row['unit']} {f'({status})' if status else ''}", unsafe_allow_html=True)
              if row['notes']:
                  st.caption(f"📝 {row['notes']}")
         with col4:

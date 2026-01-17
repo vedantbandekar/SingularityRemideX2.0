@@ -19,6 +19,10 @@ st.set_page_config(
     layout="wide"
 )
 
+# Authentication
+from utils.auth import require_auth
+require_auth()
+
 # Inject premium CSS
 inject_css(st)
 

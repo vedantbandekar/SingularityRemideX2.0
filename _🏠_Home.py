@@ -21,6 +21,10 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Authentication
+from utils.auth import require_auth
+require_auth()
+
 # Inject premium CSS
 inject_css(st)
 

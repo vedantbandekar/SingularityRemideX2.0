@@ -89,6 +89,16 @@ class Database:
             )
         ''')
 
+        # Create users table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
         # Create appointments table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS appointments (
@@ -422,10 +432,51 @@ class Database:
         conn.close()
         return appts
 
-    def delete_appointment(self, appt_id: int):
-        """Delete an appointment"""
+    # ==================== AUTHENTICATION ====================
+
+    def create_user(self, username, password):
+        """Create a new user. Returns True if successful, False if username exists."""
+        import hashlib
+        # Simple hash
+        pwd_hash = hashlib.sha256(password.encode()).hexdigest()
+        
         conn = self._get_connection()
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM appointments WHERE id = ?", (appt_id,))
-        conn.commit()
+        try:
+            cursor.execute(
+                "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+                (username, pwd_hash)
+            )
+            conn.commit()
+            conn.close()
+            return True
+        except sqlite3.IntegrityError:
+            conn.close()
+            return False
+
+    def verify_user(self, username, password):
+        """Verify credentials. Returns user_id if valid, None otherwise."""
+        import hashlib
+        pwd_hash = hashlib.sha256(password.encode()).hexdigest()
+        
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id FROM users WHERE username = ? AND password_hash = ?",
+            (username, pwd_hash)
+        )
+        row = cursor.fetchone()
         conn.close()
+        
+        if row:
+            return row['id']
+        return None
+
+    def get_username(self, user_id):
+        """Get username by ID"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT username FROM users WHERE id = ?", (user_id,))
+        row = cursor.fetchone()
+        conn.close()
+        return row['username'] if row else "Unknown"

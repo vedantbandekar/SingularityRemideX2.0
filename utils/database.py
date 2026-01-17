@@ -74,6 +74,34 @@ class Database:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+
+        # Create vitals table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS vitals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date DATE NOT NULL,
+                time TEXT NOT NULL,
+                vital_type TEXT NOT NULL,
+                value TEXT NOT NULL,
+                unit TEXT NOT NULL,
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
+        # Create appointments table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS appointments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                doctor_name TEXT NOT NULL,
+                specialty TEXT NOT NULL,
+                appt_date DATE NOT NULL,
+                appt_time TEXT NOT NULL,
+                reason TEXT,
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
         
         conn.commit()
         conn.close()
@@ -297,3 +325,63 @@ class Database:
         result = cursor.fetchone()
         conn.close()
         return result['count'] > 0
+
+    # ==================== VITALS CRUD ====================
+
+    def add_vital(self, date_str: str, time_str: str, vital_type: str, value: str, unit: str, notes: str = ""):
+        """Log a health vital"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO vitals (date, time, vital_type, value, unit, notes) VALUES (?, ?, ?, ?, ?, ?)",
+            (date_str, time_str, vital_type, value, unit, notes)
+        )
+        conn.commit()
+        conn.close()
+
+    def get_all_vitals(self) -> List[Dict]:
+        """Get all vitals ordered by date"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM vitals ORDER BY date DESC, time DESC")
+        vitals = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        return vitals
+
+    def delete_vital(self, vital_id: int):
+        """Delete a vital entry"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM vitals WHERE id = ?", (vital_id,))
+        conn.commit()
+        conn.close()
+
+    # ==================== APPOINTMENTS CRUD ====================
+
+    def add_appointment(self, doctor_name: str, specialty: str, appt_date: str, appt_time: str, reason: str, notes: str = ""):
+        """Add a doctor appointment"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO appointments (doctor_name, specialty, appt_date, appt_time, reason, notes) VALUES (?, ?, ?, ?, ?, ?)",
+            (doctor_name, specialty, appt_date, appt_time, reason, notes)
+        )
+        conn.commit()
+        conn.close()
+
+    def get_all_appointments(self) -> List[Dict]:
+        """Get all appointments ordered by date"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM appointments ORDER BY appt_date ASC, appt_time ASC")
+        appts = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        return appts
+
+    def delete_appointment(self, appt_id: int):
+        """Delete an appointment"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM appointments WHERE id = ?", (appt_id,))
+        conn.commit()
+        conn.close()

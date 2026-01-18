@@ -5,7 +5,7 @@ Handles all SQLite CRUD operations for medicines, alerts, supplies, and history
 
 import sqlite3
 import os
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import List, Dict, Optional, Tuple
 
 # Database path
@@ -71,6 +71,44 @@ class Database:
                 medicine_name TEXT NOT NULL,
                 taken_date DATE NOT NULL,
                 taken_time TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
+        # Create vitals table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS vitals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date DATE NOT NULL,
+                time TEXT NOT NULL,
+                vital_type TEXT NOT NULL,
+                value TEXT NOT NULL,
+                unit TEXT NOT NULL,
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
+        # Create users table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Create appointments table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS appointments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                doctor_name TEXT NOT NULL,
+                specialty TEXT NOT NULL,
+                appt_date DATE NOT NULL,
+                appt_time TEXT NOT NULL,
+                reason TEXT,
+                notes TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
@@ -297,3 +335,148 @@ class Database:
         result = cursor.fetchone()
         conn.close()
         return result['count'] > 0
+
+    def get_streak_days(self) -> int:
+        """Calculate the current streak of consecutive days with medication taken"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        # Get all unique dates from history, sorted descending
+        cursor.execute("SELECT DISTINCT taken_date FROM history ORDER BY taken_date DESC")
+        rows = cursor.fetchall()
+        conn.close()
+        
+        if not rows:
+            return 0
+            
+        dates = [row['taken_date'] for row in rows]
+        today_str = date.today().isoformat()
+        yesterday_str = (date.today() - timedelta(days=1)).isoformat()
+        
+        streak = 0
+        current_check = date.today()
+        
+        # If no entry for today yet, check relative to yesterday?
+        # Standard streak logic: if today is empty, streak is maintained if yesterday was done.
+        # But for 'Current Streak', usually counts up to today.
+        # Let's count backwards from today IF today has entry, OR from yesterday.
+        
+        has_today = today_str in dates
+        if not has_today:
+            # If today not done, start checking from yesterday. 
+            # If yesterday missing too, streak is 0.
+            current_check = date.today() - timedelta(days=1)
+            if current_check.isoformat() not in dates:
+                return 0
+        
+        # Calculate streak
+        while True:
+            check_str = current_check.isoformat()
+            if check_str in dates:
+                streak += 1
+                current_check = current_check - timedelta(days=1)
+            else:
+                break
+                
+        return streak
+
+    # ==================== VITALS CRUD ====================
+
+    def add_vital(self, date_str: str, time_str: str, vital_type: str, value: str, unit: str, notes: str = ""):
+        """Log a health vital"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO vitals (date, time, vital_type, value, unit, notes) VALUES (?, ?, ?, ?, ?, ?)",
+            (date_str, time_str, vital_type, value, unit, notes)
+        )
+        conn.commit()
+        conn.close()
+
+    def get_all_vitals(self) -> List[Dict]:
+        """Get all vitals ordered by date"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM vitals ORDER BY date DESC, time DESC")
+        vitals = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        return vitals
+
+    def delete_vital(self, vital_id: int):
+        """Delete a vital entry"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM vitals WHERE id = ?", (vital_id,))
+        conn.commit()
+        conn.close()
+
+    # ==================== APPOINTMENTS CRUD ====================
+
+    def add_appointment(self, doctor_name: str, specialty: str, appt_date: str, appt_time: str, reason: str, notes: str = ""):
+        """Add a doctor appointment"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO appointments (doctor_name, specialty, appt_date, appt_time, reason, notes) VALUES (?, ?, ?, ?, ?, ?)",
+            (doctor_name, specialty, appt_date, appt_time, reason, notes)
+        )
+        conn.commit()
+        conn.close()
+
+    def get_all_appointments(self) -> List[Dict]:
+        """Get all appointments ordered by date"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM appointments ORDER BY appt_date ASC, appt_time ASC")
+        appts = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        return appts
+
+    # ==================== AUTHENTICATION ====================
+
+    def create_user(self, username, password):
+        """Create a new user. Returns True if successful, False if username exists."""
+        import hashlib
+        # Simple hash
+        pwd_hash = hashlib.sha256(password.encode()).hexdigest()
+        
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+                (username, pwd_hash)
+            )
+            conn.commit()
+            conn.close()
+            return True
+        except sqlite3.IntegrityError:
+            conn.close()
+            return False
+
+    def verify_user(self, username, password):
+        """Verify credentials. Returns user_id if valid, None otherwise."""
+        import hashlib
+        pwd_hash = hashlib.sha256(password.encode()).hexdigest()
+        
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id FROM users WHERE username = ? AND password_hash = ?",
+            (username, pwd_hash)
+        )
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return row['id']
+        return None
+
+    def get_username(self, user_id):
+        """Get username by ID"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT username FROM users WHERE id = ?", (user_id,))
+        row = cursor.fetchone()
+        conn.close()
+        return row['username'] if row else "Unknown"

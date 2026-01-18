@@ -20,6 +20,10 @@ st.set_page_config(
     layout="wide"
 )
 
+# Authentication
+from utils.auth import require_auth
+require_auth()
+
 # Inject premium CSS
 inject_css(st)
 
@@ -161,33 +165,20 @@ if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
 
 # Sidebar
-render_sidebar_header(st)
+from utils.sidebar import render_ai_sidebar
 
-st.sidebar.markdown("### 🤖 AI Assistant")
-for msg in st.session_state.chat_history[-3:]:
-    if msg["role"] == "user":
-        st.sidebar.markdown(f"**You:** {msg['content'][:40]}...")
-    else:
-        st.sidebar.markdown(f"**AI:** {msg['content'][:80]}...")
-
-user_query = st.sidebar.chat_input("Ask about medicines...", key="supply_chat")
-if user_query:
-    st.session_state.chat_history.append({"role": "user", "content": user_query})
-    response = st.session_state.medicine_search.answer_query(user_query)
-    st.session_state.chat_history.append({"role": "assistant", "content": response})
-    st.rerun()
+render_ai_sidebar()
 
 # Main content
 st.markdown('<h1 class="page-header">📦 Medicine Supply Tracker</h1>', unsafe_allow_html=True)
 st.markdown('<p class="page-subtitle">Track your medicine stock and get alerts before running out</p>', unsafe_allow_html=True)
 st.markdown("---")
 
-# Form and list columns
-form_col, list_col = st.columns([1, 1])
+# SECTION 1: ADD/UPDATE SUPPLY FORM
+st.markdown('<p class="section-title">➕ Add/Update Supply</p>', unsafe_allow_html=True)
 
-with form_col:
-    st.markdown('<p class="section-title">➕ Add/Update Supply</p>', unsafe_allow_html=True)
-    
+with st.container():
+    st.markdown('<div class="form-container">', unsafe_allow_html=True)
     with st.form("add_supply_form", clear_on_submit=True):
         # Get medicine names from scheduled medicines for suggestions
         scheduled_meds = st.session_state.db.get_all_medicines()
@@ -243,6 +234,7 @@ with form_col:
             </div>
             """, unsafe_allow_html=True)
         
+        st.markdown("<br>", unsafe_allow_html=True)
         submitted = st.form_submit_button("📦 Add/Update Supply", use_container_width=True)
         
         if submitted:
@@ -260,55 +252,68 @@ with form_col:
                     st.error("Failed to save supply. Please try again.")
             else:
                 st.error("Please enter a medicine name.")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-with list_col:
-    st.markdown('<p class="section-title">📊 Your Supplies</p>', unsafe_allow_html=True)
+st.markdown("---")
+
+# SECTION 2: SUPPLY OVERVIEW & LIST
+st.markdown('<p class="section-title">📊 Your Supplies</p>', unsafe_allow_html=True)
+
+supplies = st.session_state.db.get_all_supplies()
+
+if not supplies:
+    st.markdown("""
+    <div class="info-box">
+        📝 No supplies being tracked yet. Add your first supply above to get started!
+    </div>
+    """, unsafe_allow_html=True)
+else:
+    # Calculate stats
+    total_supplies = len(supplies)
+    low_stock_count = 0
+    for supply in supplies:
+        daily = supply['daily_dosage']
+        days_left = supply['current_stock'] / daily if daily > 0 else float('inf')
+        if days_left <= supply['alert_threshold']:
+            low_stock_count += 1
+            
+    # Display stats row
+    stat_col1, stat_col2 = st.columns(2)
+    with stat_col1:
+        st.metric("Total Items", total_supplies)
+    with stat_col2:
+        st.metric("Running Low", low_stock_count, delta_color="inverse" if low_stock_count > 0 else "off")
     
-    supplies = st.session_state.db.get_all_supplies()
-    
-    if not supplies:
-        st.markdown("""
-        <div class="info-box">
-            📝 No supplies being tracked yet. Add your first supply to get started!
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        # Summary stats
-        total_supplies = len(supplies)
-        low_stock_count = 0
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Grid layout for supplies
+    for i in range(0, len(supplies), 2):
+        col1, col2 = st.columns(2)
         
-        for supply in supplies:
+        # First card
+        with col1:
+            supply = supplies[i]
             med_name = supply['medicine_name']
             stock = supply['current_stock']
             daily = supply['daily_dosage']
             threshold = supply['alert_threshold']
             
-            # Calculate days left
             days_left = stock / daily if daily > 0 else float('inf')
             end_date = date.today() + timedelta(days=days_left)
-            
-            # Check if low stock
             is_low = days_left <= threshold
-            if is_low:
-                low_stock_count += 1
             
-            # Determine progress percentage (max 100 for display)
             progress_pct = min((days_left / 30) * 100, 100) if days_left < float('inf') else 100
             progress_color = "linear-gradient(90deg, #EF4444, #F87171)" if is_low else "linear-gradient(90deg, var(--primary), var(--accent))"
-            
-            # Card styling
             card_class = "supply-card supply-card-warning" if is_low else "supply-card"
             days_class = "days-left days-left-warning" if is_low else "days-left"
             
             st.markdown(f"""
             <div class="{card_class}">
                 <div class="supply-name">💊 {med_name}</div>
-                <div class="supply-stat"><strong>Current Stock:</strong> {stock} units</div>
-                <div class="supply-stat"><strong>Daily Dosage:</strong> {daily} units/day</div>
-                <div class="supply-stat"><strong>Alert Threshold:</strong> {threshold} days</div>
-                <div style="margin-top: 1rem;">
+                <div class="supply-stat"><strong>Stock:</strong> {stock} | <strong>Dose:</strong> {daily}/day</div>
+                <div style="margin-top: 0.5rem;">
                     <span class="{days_class}">{days_left:.0f}</span>
-                    <span style="color: var(--text-secondary);"> days remaining</span>
+                    <span style="color: var(--text-secondary);"> days left</span>
                 </div>
                 <div class="progress-container">
                     <div class="progress-bar">
@@ -318,50 +323,77 @@ with list_col:
             </div>
             """, unsafe_allow_html=True)
             
-            # Warning message
             if is_low:
-                st.markdown(f"""
-                <div class="warning-banner">
-                    ⚠️ LOW STOCK ALERT! Only {days_left:.0f} days of supply remaining. 
-                    Stock will run out by {end_date.strftime('%B %d, %Y')}!
-                </div>
-                """, unsafe_allow_html=True)
+                st.warning(f"⚠️ Low Stock! Ends {end_date.strftime('%b %d')}")
             else:
-                st.markdown(f"""
-                <div class="ok-banner">
-                    ✅ Stock OK — Supply until {end_date.strftime('%B %d, %Y')}
-                </div>
-                """, unsafe_allow_html=True)
+                 st.info(f"✅ OK. Ends {end_date.strftime('%b %d')}")
             
             # Actions
-            action_col1, action_col2 = st.columns(2)
-            with action_col1:
-                # Quick stock update
-                new_stock = st.number_input(
-                    "Update stock",
-                    min_value=0,
-                    value=stock,
-                    key=f"stock_{supply['id']}"
-                )
+            act_col1, act_col2 = st.columns([2, 1])
+            with act_col1:
+                new_stock = st.number_input("Stock", key=f"stock_{supply['id']}", value=stock, label_visibility="collapsed")
                 if new_stock != stock:
-                    if st.button("📝 Update", key=f"update_{supply['id']}"):
+                     if st.button("Update", key=f"upd_{supply['id']}"):
                         st.session_state.db.update_supply_stock(med_name, new_stock)
-                        st.success("Stock updated!")
                         st.rerun()
-            
-            with action_col2:
-                st.write("")
-                st.write("")
-                if st.button("🗑️ Delete", key=f"del_{supply['id']}", type="secondary"):
+            with act_col2:
+                if st.button("🗑️", key=f"del_{supply['id']}", type="secondary"):
                     st.session_state.db.delete_supply(supply['id'])
-                    st.success(f"Deleted {med_name} from supply tracker")
                     st.rerun()
-            
-            st.markdown("---")
+
+        # Second card
+        if i + 1 < len(supplies):
+             with col2:
+                supply = supplies[i+1]
+                med_name = supply['medicine_name']
+                stock = supply['current_stock']
+                daily = supply['daily_dosage']
+                threshold = supply['alert_threshold']
+                
+                days_left = stock / daily if daily > 0 else float('inf')
+                end_date = date.today() + timedelta(days=days_left)
+                is_low = days_left <= threshold
+                
+                progress_pct = min((days_left / 30) * 100, 100) if days_left < float('inf') else 100
+                progress_color = "linear-gradient(90deg, #EF4444, #F87171)" if is_low else "linear-gradient(90deg, var(--primary), var(--accent))"
+                card_class = "supply-card supply-card-warning" if is_low else "supply-card"
+                days_class = "days-left days-left-warning" if is_low else "days-left"
+                
+                st.markdown(f"""
+                <div class="{card_class}">
+                    <div class="supply-name">💊 {med_name}</div>
+                    <div class="supply-stat"><strong>Stock:</strong> {stock} | <strong>Dose:</strong> {daily}/day</div>
+                    <div style="margin-top: 0.5rem;">
+                        <span class="{days_class}">{days_left:.0f}</span>
+                        <span style="color: var(--text-secondary);"> days left</span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: {progress_pct}%; background: {progress_color};"></div>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                if is_low:
+                    st.warning(f"⚠️ Low Stock! Ends {end_date.strftime('%b %d')}")
+                else:
+                    st.info(f"✅ OK. Ends {end_date.strftime('%b %d')}")
+                
+                 # Actions
+                act_col1, act_col2 = st.columns([2, 1])
+                with act_col1:
+                    new_stock = st.number_input("Stock", key=f"stock_{supply['id']}", value=stock, label_visibility="collapsed")
+                    if new_stock != stock:
+                         if st.button("Update", key=f"upd_{supply['id']}"):
+                            st.session_state.db.update_supply_stock(med_name, new_stock)
+                            st.rerun()
+                with act_col2:
+                    if st.button("🗑️", key=f"del_{supply['id']}", type="secondary"):
+                        st.session_state.db.delete_supply(supply['id'])
+                        st.rerun()
         
-        # Summary at top
-        if low_stock_count > 0:
-            st.warning(f"⚠️ **{low_stock_count}** medicine(s) are running low on stock!")
+        st.markdown("<br>", unsafe_allow_html=True)
 
 # Tips section
 st.markdown("---")

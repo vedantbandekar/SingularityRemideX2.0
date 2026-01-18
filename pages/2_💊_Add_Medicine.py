@@ -20,13 +20,17 @@ st.set_page_config(
     layout="wide"
 )
 
+# Authentication
+from utils.auth import require_auth
+require_auth()
+
 # Inject premium CSS
 inject_css(st)
 
 # Additional page-specific CSS
 st.markdown("""
 <style>
-    .form-container {
+    [data-testid="stForm"] {
         background: var(--glass-bg);
         backdrop-filter: blur(20px);
         border: 1px solid var(--glass-border);
@@ -105,79 +109,63 @@ if 'alert_times' not in st.session_state:
     st.session_state.alert_times = []
 
 # Sidebar
-render_sidebar_header(st)
+from utils.sidebar import render_ai_sidebar
 
-st.sidebar.markdown("### 🤖 AI Assistant")
-for msg in st.session_state.chat_history[-3:]:
-    if msg["role"] == "user":
-        st.sidebar.markdown(f"**You:** {msg['content'][:40]}...")
-    else:
-        st.sidebar.markdown(f"**AI:** {msg['content'][:80]}...")
-
-user_query = st.sidebar.chat_input("Ask about medicines...", key="add_med_chat")
-if user_query:
-    st.session_state.chat_history.append({"role": "user", "content": user_query})
-    response = st.session_state.medicine_search.answer_query(user_query)
-    st.session_state.chat_history.append({"role": "assistant", "content": response})
-    st.rerun()
+render_ai_sidebar()
 
 # Main content
 st.markdown('<h1 class="page-header">💊 Add Medicine</h1>', unsafe_allow_html=True)
 st.markdown('<p class="page-subtitle">Schedule your medications and set reminder alerts</p>', unsafe_allow_html=True)
 st.markdown("---")
 
-# Form and list columns
-form_col, list_col = st.columns([1, 1])
+# SECTION 1: ADD MEDICINE FORM
+st.markdown('<p class="section-title">➕ Add New Medicine</p>', unsafe_allow_html=True)
 
-with form_col:
-    st.markdown('<p class="section-title">➕ Add New Medicine</p>', unsafe_allow_html=True)
-    
+with st.container():
+
     with st.form("add_medicine_form", clear_on_submit=True):
-        medicine_name = st.text_input("Medicine Name", placeholder="Enter medicine name...")
-        
-        col_dosage, col_freq = st.columns(2)
-        with col_dosage:
+        col1, col2 = st.columns(2)
+        with col1:
+            medicine_name = st.text_input("Medicine Name", placeholder="Enter medicine name...")
+        with col2:
             dosage = st.text_input("Dosage", placeholder="e.g., 500mg")
-        with col_freq:
-            frequency = st.selectbox("Frequency", [
-                "Once Daily",
-                "Twice Daily",
-                "Three Times Daily",
-                "Four Times Daily",
-                "Every 6 Hours",
-                "Every 8 Hours",
-                "Every 12 Hours",
-                "As Needed",
-                "Weekly",
-                "Custom"
-            ])
+        
+        frequency = st.selectbox("Frequency", [
+            "Once Daily",
+            "Twice Daily",
+            "Three Times Daily",
+            "Four Times Daily",
+            "Every 6 Hours",
+            "Every 8 Hours",
+            "Every 12 Hours",
+            "As Needed",
+            "Weekly",
+            "Custom"
+        ])
         
         st.markdown("---")
         st.markdown("#### ⏰ Alert Times")
         st.markdown("*Add specific times for medication reminders*")
         
-        alert_col1, alert_col2, alert_col3 = st.columns(3)
+        alert_col1, alert_col2, alert_col3, alert_col4 = st.columns(4)
         
         with alert_col1:
             time1 = st.time_input("Morning", value=time(8, 0), key="time1")
-            add_time1 = st.checkbox("Add morning alert", key="check1")
+            add_time1 = st.checkbox("Enable", key="check1")
         
         with alert_col2:
             time2 = st.time_input("Afternoon", value=time(14, 0), key="time2")
-            add_time2 = st.checkbox("Add afternoon alert", key="check2")
+            add_time2 = st.checkbox("Enable", key="check2")
         
         with alert_col3:
             time3 = st.time_input("Evening", value=time(20, 0), key="time3")
-            add_time3 = st.checkbox("Add evening alert", key="check3")
+            add_time3 = st.checkbox("Enable", key="check3")
         
-        # Custom time input
-        st.markdown("**Custom Time:**")
-        custom_col1, custom_col2 = st.columns([2, 1])
-        with custom_col1:
-            custom_time = st.time_input("Select time", value=time(12, 0), key="custom_time")
-        with custom_col2:
-            add_custom = st.checkbox("Add custom", key="check_custom")
+        with alert_col4:
+            custom_time = st.time_input("Custom", value=time(22, 0), key="custom_time")
+            add_custom = st.checkbox("Enable", key="check_custom")
         
+        st.markdown("<br>", unsafe_allow_html=True)
         submitted = st.form_submit_button("💊 Add Medicine", use_container_width=True)
         
         if submitted:
@@ -205,19 +193,28 @@ with form_col:
             else:
                 st.error("Please fill in medicine name and dosage.")
 
-with list_col:
-    st.markdown('<p class="section-title">📋 Scheduled Medicines</p>', unsafe_allow_html=True)
-    
-    medicines = st.session_state.db.get_all_medicines()
-    
-    if not medicines:
-        st.markdown("""
-        <div class="info-box">
-            📝 No medicines scheduled yet. Add your first medicine to get started!
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        for med in medicines:
+
+st.markdown("---")
+
+# SECTION 2: SCHEDULED MEDICINES LIST
+st.markdown('<p class="section-title">📋 Scheduled Medicines</p>', unsafe_allow_html=True)
+
+medicines = st.session_state.db.get_all_medicines()
+
+if not medicines:
+    st.markdown("""
+    <div class="info-box">
+        📝 No medicines scheduled yet. Add your first medicine above to get started!
+    </div>
+    """, unsafe_allow_html=True)
+else:
+    # Grid layout for medicines
+    for i in range(0, len(medicines), 2):
+        col1, col2 = st.columns(2)
+        
+        # First card
+        with col1:
+            med = medicines[i]
             st.markdown(f"""
             <div class="medicine-card">
                 <div class="medicine-name">💊 {med['name']}</div>
@@ -226,20 +223,45 @@ with list_col:
             </div>
             """, unsafe_allow_html=True)
             
-            # Display alert times
-            if med['alert_times']:
-                alert_html = "".join([f'<span class="alert-time-badge">🔔 {t}</span>' for t in med['alert_times']])
-                st.markdown(f"**Alerts:** {alert_html}", unsafe_allow_html=True)
-            else:
-                st.markdown("*No alerts set*")
-            
-            # Delete button
-            if st.button(f"🗑️ Delete", key=f"del_{med['id']}", type="secondary"):
-                st.session_state.db.delete_medicine(med['id'])
-                st.success(f"Deleted {med['name']}")
-                st.rerun()
-            
-            st.markdown("---")
+            # Alerts & Actions
+            act_col1, act_col2 = st.columns([3, 1])
+            with act_col1:
+                if med['alert_times']:
+                    alert_html = "".join([f'<span class="alert-time-badge">🔔 {t}</span>' for t in med['alert_times']])
+                    st.markdown(f"{alert_html}", unsafe_allow_html=True)
+                else:
+                    st.markdown("*No alerts*")
+            with act_col2:
+                 if st.button(f"🗑️", key=f"del_{med['id']}", help="Delete medicine"):
+                    st.session_state.db.delete_medicine(med['id'])
+                    st.rerun()
+        
+        # Second card (if exists)
+        if i + 1 < len(medicines):
+            with col2:
+                med = medicines[i+1]
+                st.markdown(f"""
+                <div class="medicine-card">
+                    <div class="medicine-name">💊 {med['name']}</div>
+                    <div class="medicine-info"><strong>Dosage:</strong> {med['dosage']}</div>
+                    <div class="medicine-info"><strong>Frequency:</strong> {med['frequency']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Alerts & Actions
+                act_col1, act_col2 = st.columns([3, 1])
+                with act_col1:
+                    if med['alert_times']:
+                        alert_html = "".join([f'<span class="alert-time-badge">🔔 {t}</span>' for t in med['alert_times']])
+                        st.markdown(f"{alert_html}", unsafe_allow_html=True)
+                    else:
+                        st.markdown("*No alerts*")
+                with act_col2:
+                     if st.button(f"🗑️", key=f"del_{med['id']}", help="Delete medicine"):
+                        st.session_state.db.delete_medicine(med['id'])
+                        st.rerun()
+        
+        st.markdown("<br>", unsafe_allow_html=True)
 
 # Tips section
 st.markdown("---")

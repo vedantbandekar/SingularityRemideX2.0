@@ -1,249 +1,317 @@
 """
-Remidex - Smart Medication Management System
-Main application entry point - Home Page
+Remidex - Smart Medication & Health Manager
+Main Dashboard (Home Page)
 """
 
 import streamlit as st
 import sys
 import os
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
-# Add utils to path
 sys.path.insert(0, os.path.dirname(__file__))
-
 from utils.database import Database
 from utils.ai_helper import get_medicine_search
 from utils.styling import inject_css, render_sidebar_header, render_footer
 
 # Page configuration
 st.set_page_config(
-    page_title="Remidex | Smart Medication Manager",
-    page_icon="💊",
+    page_title="Home | Remidex",
+    page_icon="🏠",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
+# Authentication
+from utils.auth import require_auth
+require_auth()
+
 # Inject premium CSS
 inject_css(st)
 
-# Additional Home page specific CSS
+# Dashboard-specific CSS
 st.markdown("""
 <style>
-    .hero-title {
-        font-size: 3.5rem;
+    .hero-card {
+        background: linear-gradient(135deg, rgba(50, 205, 50, 0.1), rgba(0, 0, 0, 0.3));
+        border: 1px solid var(--primary-dark);
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+    
+    .metric-card {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
+        padding: 1.5rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .metric-card:hover {
+        border-color: var(--primary-light);
+        transform: translateY(-5px);
+        box-shadow: 0 5px 15px rgba(50, 205, 50, 0.1);
+    }
+    
+    .metric-value {
+        font-size: 2.5rem;
         font-weight: 800;
-        background: linear-gradient(135deg, var(--text-primary), var(--primary));
+        background: linear-gradient(135deg, var(--primary-light), var(--accent));
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
-        margin-bottom: 0.5rem;
-        line-height: 1.2;
+        margin-bottom: 0.25rem;
     }
     
-    .hero-subtitle {
-        font-size: 1.2rem;
+    .metric-label {
+        font-size: 0.85rem;
         color: var(--text-secondary);
-        margin-bottom: 2rem;
-        font-weight: 300;
+        text-transform: uppercase;
+        letter-spacing: 1px;
     }
     
-    .quote-card {
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(34, 211, 238, 0.1));
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-left: 4px solid var(--accent);
-        border-radius: 0 16px 16px 0;
-        padding: 1.5rem 2rem;
-        margin-top: 1rem;
-        margin-bottom: 2rem;
+    .dashboard-card {
+        background: var(--bg-card);
+        border-radius: 16px;
+        padding: 1.25rem;
+        height: 100%;
+        border: 1px solid var(--glass-border);
     }
     
-    .quote-text {
+    .card-title {
         font-size: 1.1rem;
-        font-style: italic;
+        font-weight: 600;
         color: var(--text-primary);
-        line-height: 1.6;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
     
-    .quote-author {
-        font-size: 0.9rem;
-        color: var(--primary-light);
-        margin-top: 0.5rem;
+    .list-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    
+    .list-item:last-child {
+        border-bottom: none;
+    }
+    
+    .status-badge {
+        padding: 0.2rem 0.6rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
         font-weight: 600;
     }
     
-    .welcome-text {
-        font-size: 1.1rem;
-        line-height: 1.7;
-        color: var(--text-secondary);
-        margin-bottom: 2rem;
+    .status-ok { background: rgba(50, 205, 50, 0.2); color: #32CD32; }
+    .status-warning { background: rgba(255, 215, 0, 0.2); color: #FFD700; }
+    .status-danger { background: rgba(255, 68, 68, 0.2); color: #FF4444; }
+    
+    .nav-btn {
+        display: block;
+        width: 100%;
+        padding: 1rem;
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        color: var(--text-primary);
+        text-align: center;
+        text-decoration: none;
+        transition: all 0.2s;
+        margin-bottom: 0.5rem;
     }
     
-    .welcome-text strong {
-        color: var(--primary-light);
+    .nav-btn:hover {
+        border-color: var(--primary);
+        background: rgba(50, 205, 50, 0.05);
     }
+
 </style>
 """, unsafe_allow_html=True)
 
-# Initialize session state
+# Initialize
 if 'db' not in st.session_state:
     st.session_state.db = Database()
+    # Ensure tables
+    st.session_state.db._init_db()
 if 'medicine_search' not in st.session_state:
     st.session_state.medicine_search = get_medicine_search()
 if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
 
 # Sidebar
-render_sidebar_header(st)
+from utils.sidebar import render_ai_sidebar
 
-# Sidebar AI Chatbot
-st.sidebar.markdown("### 🤖 AI Assistant")
-st.sidebar.markdown("*Ask me about any medicine!*")
+render_ai_sidebar()
 
-# Scrollable chat container
-with st.sidebar.container(height=400):
-    for msg in st.session_state.chat_history:
-        if msg["role"] == "user":
-            st.markdown(f"**You:** {msg['content']}")
-        else:
-            st.markdown(f"**AI:** {msg['content']}")
-            st.markdown("---")
+# --- MAIN CONTENT ---
 
-user_query = st.sidebar.chat_input("Ask about medicines...", key="home_chat")
-if user_query:
-    st.session_state.chat_history.append({"role": "user", "content": user_query})
-    response = st.session_state.medicine_search.answer_query(user_query)
-    st.session_state.chat_history.append({"role": "assistant", "content": response})
-    st.rerun()
+# Hero Header
+st.markdown(f'<h1 class="page-header">RemideX</h1>', unsafe_allow_html=True)
+st.markdown(f'<p class="page-subtitle">Today is <strong>{date.today().strftime("%A, %B %d, %Y")}</strong></p>', unsafe_allow_html=True)
 
-# Main content
-st.markdown('<h1 class="hero-title">Remidex</h1>', unsafe_allow_html=True)
-st.markdown('<p class="hero-subtitle">Smart Medication Management System</p>', unsafe_allow_html=True)
+# 1. TOP METRICS
+streak = st.session_state.db.get_streak_days()
+meds_count = len(st.session_state.db.get_all_medicines())
+vitals_count = len(st.session_state.db.get_all_vitals())
 
-st.markdown("""
-<div class="quote-card">
-    <p class="quote-text">"Healing is a matter of time, but it is sometimes also a matter of opportunity."</p>
-    <p class="quote-author">— Hippocrates</p>
-</div>
-""", unsafe_allow_html=True)
+col1, col2, col3 = st.columns(3)
 
-st.markdown("""
-<p class="welcome-text">
-    Welcome to <strong>Remidex</strong> — your personal medication companion. 
-    Take control of your health with our comprehensive medication management system 
-    powered by AI-driven insights. Track your medicines, manage supplies, and never miss a dose.
-</p>
-""", unsafe_allow_html=True)
-
-st.markdown("### Features")
-st.markdown("""
-<div>
-    <span class="feature-badge">📅 Smart Scheduling</span>
-    <span class="feature-badge">📦 Supply Tracking</span>
-    <span class="feature-badge">🧠 AI Knowledge Hub</span>
-    <span class="feature-badge">📜 Detailed History</span>
-</div>
-""", unsafe_allow_html=True)
-
-st.markdown("---")
-
-# Navigation Hub
-st.markdown("### 🧭 Quick Navigation")
-
-nav_col1, nav_col2, nav_col3, nav_col4 = st.columns(4)
-
-with nav_col1:
-    st.markdown("""
-    <div class="nav-card" style="min-height: 220px;">
-        <div class="nav-card-icon">💊</div>
-        <p class="nav-card-title">Add Medicine</p>
-        <p class="nav-card-desc">Schedule & Alerts</p>
-    </div>
-    """, unsafe_allow_html=True)
-    if st.button("Add Medicine", key="nav_add", use_container_width=True):
-        st.switch_page("pages/2_💊_Add_Medicine.py")
-
-with nav_col2:
-    st.markdown("""
-    <div class="nav-card" style="min-height: 220px;">
-        <div class="nav-card-icon">📦</div>
-        <p class="nav-card-title">Supply Tracker</p>
-        <p class="nav-card-desc">Stock & Low Alerts</p>
-    </div>
-    """, unsafe_allow_html=True)
-    if st.button("Manage Supply", key="nav_supply", use_container_width=True):
-        st.switch_page("pages/3_📦_Medicine_Supply.py")
-
-with nav_col3:
-    st.markdown("""
-    <div class="nav-card" style="min-height: 220px;">
-        <div class="nav-card-icon">🧠</div>
-        <p class="nav-card-title">Knowledge Hub</p>
-        <p class="nav-card-desc">AI Insights & Info</p>
-    </div>
-    """, unsafe_allow_html=True)
-    if st.button("Ask AI", key="nav_ml", use_container_width=True):
-        st.switch_page("pages/4_🧠_ML_Agent.py")
-
-with nav_col4:
-    st.markdown("""
-    <div class="nav-card" style="min-height: 220px;">
-        <div class="nav-card-icon">📜</div>
-        <p class="nav-card-title">History & Log</p>
-        <p class="nav-card-desc">View Logs & Stats</p>
-    </div>
-    """, unsafe_allow_html=True)
-    if st.button("View History", key="nav_history", use_container_width=True):
-        st.switch_page("pages/5_📜_History.py")
-
-# Quick stats
-st.markdown("---")
-st.markdown('<p class="page-header" style="font-size: 1.5rem;">📊 Dashboard Overview</p>', unsafe_allow_html=True)
-
-stats_col1, stats_col2, stats_col3, stats_col4 = st.columns(4)
-
-medicines = st.session_state.db.get_all_medicines()
-supplies = st.session_state.db.get_all_supplies()
-history = st.session_state.db.get_today_history()
-
-with stats_col1:
+with col1:
     st.markdown(f"""
-    <div class="stat-card">
-        <div class="stat-value">{len(medicines)}</div>
-        <div class="stat-label">Scheduled Medicines</div>
+    <div class="metric-card">
+        <div class="metric-value">{streak} Days</div>
+        <div class="metric-label">🔥 Current Streak</div>
     </div>
     """, unsafe_allow_html=True)
 
-with stats_col2:
+with col2:
     st.markdown(f"""
-    <div class="stat-card">
-        <div class="stat-value">{len(supplies)}</div>
-        <div class="stat-label">Tracked Supplies</div>
+    <div class="metric-card">
+        <div class="metric-value">{meds_count}</div>
+        <div class="metric-label">💊 Active Medicines</div>
     </div>
     """, unsafe_allow_html=True)
 
-with stats_col3:
+with col3:
     st.markdown(f"""
-    <div class="stat-card">
-        <div class="stat-value">{len(history)}</div>
-        <div class="stat-label">Taken Today</div>
+    <div class="metric-card">
+        <div class="metric-value">{vitals_count}</div>
+        <div class="metric-label">❤️ Vitals Logged</div>
     </div>
     """, unsafe_allow_html=True)
 
-with stats_col4:
-    # Count low stock items
-    low_stock = 0
-    for supply in supplies:
-        if supply['daily_dosage'] > 0:
-            days_left = supply['current_stock'] / supply['daily_dosage']
-            if days_left <= supply['alert_threshold']:
-                low_stock += 1
+st.markdown("<br>", unsafe_allow_html=True)
+
+# 2. INSIGHTS ROW (Appointments & Supply)
+row2_col1, row2_col2 = st.columns(2)
+
+# Appointments Widget
+with row2_col1:
+
+    st.markdown('<div class="card-title">🗓️ Next Appointment</div>', unsafe_allow_html=True)
     
-    st.markdown(f"""
-    <div class="stat-card" style="border-color: {'var(--danger)' if low_stock > 0 else 'var(--glass-border)'};">
-        <div class="stat-value" style="color: {'var(--danger)' if low_stock > 0 else 'inherit'}; background: none; -webkit-text-fill-color: {'var(--danger)' if low_stock > 0 else 'var(--text-primary)'};">{low_stock}</div>
-        <div class="stat-label">Low Stock Alerts</div>
-    </div>
-    """, unsafe_allow_html=True)
+    appts = st.session_state.db.get_all_appointments()
+    today_iso = date.today().isoformat()
+    # Filter upcoming
+    upcoming = [a for a in appts if a['appt_date'] >= today_iso]
+    
+    if not upcoming:
+        st.info("No upcoming appointments.")
+        st.markdown("[Schedule one now ->](Appointments)")
+    else:
+        # Get nearest
+        next_appt = upcoming[0] # Already sorted by date in DB query
+        d_obj = datetime.strptime(next_appt['appt_date'], "%Y-%m-%d")
+        days_left = (d_obj.date() - date.today()).days
+        
+        if days_left == 0:
+            status = '<span class="status-badge status-warning">TODAY</span>'
+        elif days_left == 1:
+            status = '<span class="status-badge status-ok">TOMORROW</span>'
+        else:
+            status = f'<span class="status-badge status-ok">IN {days_left} DAYS</span>'
+            
+        st.markdown(f"""
+        <div style="background:var(--bg-elevated); padding:1rem; border-radius:12px; margin-bottom:1rem;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+                <span style="font-weight:bold; font-size:1.1rem; color:var(--primary-light);">
+                    {next_appt['doctor_name']}
+                </span>
+                {status}
+            </div>
+            <div style="color:var(--text-secondary); font-size:0.9rem;">
+                {next_appt['specialty']}
+            </div>
+            <div style="margin-top:0.5rem; font-weight:600;">
+                 📅 {d_obj.strftime("%b %d")} at {next_appt['appt_time']}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        if len(upcoming) > 1:
+            st.caption(f"And {len(upcoming)-1} more upcoming.")
+            
+
+
+
+# Supply Alert Widget
+with row2_col2:
+
+    st.markdown('<div class="card-title">📦 Supply Alerts</div>', unsafe_allow_html=True)
+    
+    supplies = st.session_state.db.get_all_supplies()
+    low_stock = []
+    
+    for s in supplies:
+        daily = s['daily_dosage']
+        days = s['current_stock'] / daily if daily > 0 else 999
+        if days <= s['alert_threshold']:
+            low_stock.append(s)
+            
+    if not low_stock:
+        st.success("✅ All supplies are fully stocked!")
+    else:
+        for s in low_stock[:3]: # Show max 3
+            days = int(s['current_stock'] / s['daily_dosage'])
+            st.markdown(f"""
+            <div class="list-item">
+                <div>
+                    <strong>{s['medicine_name']}</strong><br>
+                    <span style="font-size:0.8rem; color:var(--text-secondary);">Only {s['current_stock']} left</span>
+                </div>
+                <span class="status-badge status-danger">{days} Days Left</span>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        if len(low_stock) > 3:
+            st.caption(f"...and {len(low_stock)-3} more.")
+            
+
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# 3. RECENT VITALS
+
+st.markdown('<div class="card-title">❤️ Recent Vitals</div>', unsafe_allow_html=True)
+
+vitals = st.session_state.db.get_all_vitals()
+if not vitals:
+    st.info("No vitals logged recently.")
+else:
+    # Group by type and get latest
+    latest_vitals = {}
+    for v in vitals: # Ordered by date desc
+        if v['vital_type'] not in latest_vitals:
+            latest_vitals[v['vital_type']] = v
+            
+    # Display in columns (max 4)
+    v_cols = st.columns(4)
+    count = 0
+    for v_type, data in latest_vitals.items():
+        if count >= 4: break
+        with v_cols[count]:
+            st.markdown(f"""
+            <div style="text-align:center; padding:0.5rem;">
+                <div style="font-size:0.8rem; color:var(--text-secondary);">{v_type}</div>
+                <div style="font-size:1.2rem; font-weight:bold; color:var(--primary-light);">{data['value']} <span style="font-size:0.8rem;">{data['unit']}</span></div>
+                <div style="font-size:0.75rem; opacity:0.7;">{data['date']}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        count += 1
+
+
 
 # Footer
+st.markdown("---")
 render_footer(st)
